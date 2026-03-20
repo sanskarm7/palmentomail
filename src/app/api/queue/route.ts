@@ -31,7 +31,7 @@ export async function GET() {
     .from(mailPieces)
     .innerJoin(emails, eq(mailPieces.emailId, emails.id))
     .where(eq(mailPieces.userId, session.userId))
-    .orderBy(desc(mailPieces.id))
+    .orderBy(desc(emails.deliveryDate), desc(mailPieces.id))
     .limit(50);
 
   return NextResponse.json({ items: rows });
