@@ -1,45 +1,47 @@
 import {
-  mysqlTable,
+  pgTable,
   varchar,
   text,
-  int,
-  tinyint,
+  integer,
+  serial,
+  smallint,
   timestamp,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 
-export const users = mysqlTable("users", {
+export const users = pgTable("users", {
   id: varchar("id", { length: 255 }).primaryKey(), // Google sub
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const emails = mysqlTable("emails", {
+export const emails = pgTable("emails", {
   id: varchar("id", { length: 255 }).primaryKey(), // Google sub
   userId: varchar("user_id", { length: 255 })
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: 'cascade' }),
   deliveryDate: varchar("delivery_date", { length: 20 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const mailPieces = mysqlTable("mail_pieces", {
-  id: int("id").primaryKey().autoincrement(),
+export const mailPieces = pgTable("mail_pieces", {
+  id: serial("id").primaryKey(),
   emailId: varchar("email_id", { length: 255 })
     .notNull()
-    .references(() => emails.id),
+    .references(() => emails.id, { onDelete: 'cascade' }),
   userId: varchar("user_id", { length: 255 })
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: 'cascade' }),
   rawSenderText: text("raw_sender_text"),
   imgHash: varchar("img_hash", { length: 64 }),
-  // LLM fields — populated at ingest time by Gemini (or future local LLM)
+  imgStoragePath: text("img_storage_path"),
+  // LLM fields
   llmSenderName: text("llm_sender_name"),
   llmRecipientName: text("llm_recipient_name"),
-  llmConfidence: int("llm_confidence"), // 0–100 (represents 0.00–1.00 confidence)
+  llmConfidence: integer("llm_confidence"), // 0–100
   llmMailType: text("llm_mail_type"),
   llmSummary: text("llm_summary"),
-  llmIsImportant: tinyint("llm_is_important", { unsigned: true }),
+  llmIsImportant: smallint("llm_is_important"),
   llmImportanceReason: text("llm_importance_reason"),
   llmRawJson: text("llm_raw_json"),
   createdAt: timestamp("created_at").defaultNow(),

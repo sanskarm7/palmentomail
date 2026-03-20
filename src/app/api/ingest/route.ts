@@ -13,6 +13,7 @@ import { runOcr } from "@/lib/ocr";
 import { interpretMailWithGemini, interpretMailWithGeminiVision, resetLlmCallCount } from "@/lib/llm";
 import { createHash } from "crypto";
 import { eq, and } from "drizzle-orm";
+import { supabase } from "@/lib/supabase";
 
 const DEFAULT_QUERY =
   'from:USPSInformeddelivery@email.informeddelivery.usps.com subject:"Daily Digest" newer_than:60d';
@@ -116,6 +117,25 @@ export async function GET() {
             const imageBuffer = await loadMailImage(gmail, msgId, imgUrl);
             let ocrResult: Awaited<ReturnType<typeof runOcr>> | null = null;
             let llmResult: Awaited<ReturnType<typeof interpretMailWithGemini>> | null = null;
+            let finalStoragePath: string | null = null;
+
+            if (imageBuffer) {
+              sendLog("    [Storage] Uploading crop to Supabase...");
+              const storagePath = `${userId}/${msgId}/${hash}.jpg`;
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('mail-images')
+                .upload(storagePath, imageBuffer, {
+                  contentType: 'image/jpeg',
+                  upsert: true
+                });
+
+               if (uploadError) {
+                 sendLog(`    [Error] Supabase Upload failed: ${uploadError.message}`);
+               } else {
+                 finalStoragePath = uploadData?.path ?? storagePath;
+                 sendLog(`    [Storage] Image securely uploaded!`);
+               }
+            }
 
             if (imageBuffer && process.env.GOOGLE_API_KEY) {
               const visionMode = process.env.LLM_VISION_MODE === "1";
@@ -167,6 +187,7 @@ export async function GET() {
                 userId,
                 rawSenderText: sender ?? null,
                 imgHash: hash,
+                imgStoragePath: finalStoragePath,
                 llmSenderName: llmResult?.senderName ?? null,
                 llmRecipientName: llmResult?.recipientName ?? null,
                 llmConfidence: llmResult ? Math.round(llmResult.confidence * 100) : null,

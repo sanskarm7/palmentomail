@@ -4,18 +4,21 @@ import { useEffect, useState, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Image from "next/image";
 
-type Item = {
+interface Item {
   id: number;
+  emailId: string;
+  userId: string;
   deliveryDate: string | null;
   rawSenderText: string | null;
   imgHash: string | null;
+  imgStoragePath: string | null;
   llmSenderName: string | null;
   llmRecipientName: string | null;
   llmMailType: string | null;
   llmSummary: string | null;
   llmIsImportant: boolean | null;
   llmImportanceReason: string | null;
-};
+}
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -23,6 +26,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [ingestLogs, setIngestLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -237,6 +241,7 @@ export default function Home() {
                 return (
                   <div
                     key={it.id}
+                    onClick={() => setSelectedItem(it)}
                     className={`group flex items-center px-4 py-3.5 cursor-pointer hover:bg-gray-50 hover:shadow-[inset_4px_0_0_0_rgba(59,130,246,0.6)] transition-all ${isImportant ? 'bg-orange-50/20 hover:bg-orange-50/60 hover:shadow-[inset_4px_0_0_0_rgba(249,115,22,0.6)]' : ''}`}
                   >
                     {/* Left: Indicator & Sender */}
@@ -293,6 +298,88 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* MAIL VIEW MODAL */}
+      {selectedItem && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={() => setSelectedItem(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex overflow-hidden animate-fade-in-up"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Left Column: Metadata */}
+            <div className="w-[350px] shrink-0 bg-gray-50 border-r border-gray-100 flex flex-col overflow-y-auto">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-gray-50/95 backdrop-blur z-10">
+                <h3 className="text-lg font-bold text-gray-800 tracking-tight flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  Mail Details
+                </h3>
+                <button onClick={() => setSelectedItem(null)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div>
+                  <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Sender</h4>
+                  <p className="font-bold text-gray-900 text-lg">{selectedItem.llmSenderName || selectedItem.rawSenderText || "Unknown Sender"}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Recipient</h4>
+                  <p className="font-medium text-gray-700">{selectedItem.llmRecipientName && selectedItem.llmRecipientName.toLowerCase() !== "null" ? selectedItem.llmRecipientName : "Current Resident"}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Mail Type</h4>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-semibold bg-blue-50 text-blue-700">
+                    {selectedItem.llmMailType || "Uncategorized"}
+                  </span>
+                </div>
+
+                {selectedItem.llmIsImportant ? (
+                  <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
+                    <h4 className="text-[11px] font-bold text-orange-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] animate-pulse"></div>
+                      Important Mail
+                    </h4>
+                    <p className="text-sm font-medium text-orange-900 leading-snug">
+                      {selectedItem.llmImportanceReason}
+                    </p>
+                  </div>
+                ) : null}
+
+                <div>
+                  <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">AI Summary</h4>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    {selectedItem.llmSummary || "No detailed summary available."}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Image Viewer */}
+            <div className="flex-1 bg-gray-100 relative flex items-center justify-center p-6">
+              {selectedItem.imgStoragePath ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img 
+                  src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/mail-images/${selectedItem.imgStoragePath}`}
+                  alt="Mail Piece Scan"
+                  className="max-w-full max-h-full object-contain rounded-xl shadow-md border border-gray-200/50"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-400">
+                  <svg className="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
+                  <p className="font-medium">No Image Uploaded</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
