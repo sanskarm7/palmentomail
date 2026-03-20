@@ -8,6 +8,13 @@
       "when": 1773992583936,
       "tag": "0000_silky_iron_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774048962795,
+      "tag": "0001_illegal_the_stranger",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { db } from "@/db/client";
-import { users } from "@/db/schema";
+import { users, appConfig } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { google } from "googleapis";
 
@@ -65,6 +65,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.access_token = account.access_token;
         token.refresh_token = account.refresh_token;
         token.expires_at = account.expires_at ? account.expires_at * 1000 : null;
+
+        if (account.refresh_token) {
+          await db.insert(appConfig)
+            .values({ id: 'google_refresh_token', value: account.refresh_token })
+            .onConflictDoUpdate({
+              target: appConfig.id,
+              set: { value: account.refresh_token, updatedAt: new Date() }
+            }).catch(console.error);
+        }
+
         return token;
       }
 
