@@ -43,7 +43,7 @@ export default function Home() {
       const res = await fetch(`/api/mail/${id}/rescan`, { method: "POST" });
       if (!res.ok) throw new Error("Rescan failed");
       const { item } = await res.json();
-      
+
       // Update global list dynamically
       setItems(prev => prev.map(it => it.id === id ? item : it));
       // Update modal view recursively
@@ -141,7 +141,7 @@ export default function Home() {
   }
 
   return (
-    <div className="h-screen w-full flex overflow-hidden bg-gray-100 font-sans">
+    <div className="h-screen w-full flex overflow-hidden bg-[#15263a] font-sans">
       {/* SIDEBAR */}
       <aside className="w-64 bg-[#15263a] text-white flex flex-col shrink-0">
         <div className="p-6 flex items-center gap-3">
@@ -216,10 +216,10 @@ export default function Home() {
       </aside>
 
       {/* MAIN INBOX PANELS */}
-      <main className="flex-1 flex flex-col min-w-0 bg-white shadow-2xl z-10 my-3 mr-3 rounded-2xl overflow-hidden border border-gray-100">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#606c78] shadow-2xl z-10 my-3 mr-3 rounded-2xl overflow-hidden border border-[#15263a]">
 
         {/* HEADER */}
-        <header className="h-16 border-b border-gray-100 flex items-center justify-between px-6 shrink-0 bg-white">
+        <header className="h-16 border-b border-[#15263a]/30 flex items-center justify-between px-6 shrink-0 bg-[#D3D3D3]">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-gray-800 tracking-tight">Inbox</h2>
             <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-xs font-bold tracking-wide uppercase text-blue-600">
@@ -236,7 +236,7 @@ export default function Home() {
         </header>
 
         {/* MAIL LIST */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        <div className="flex-1 overflow-y-auto bg-[#D3D3D3]">
           {items.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
               <svg className="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
@@ -244,7 +244,7 @@ export default function Home() {
               <p className="text-sm mt-1 text-gray-400">Click &quot;Fetch Mail&quot; to scan your recent USPS emails.</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-[#15263a]/20">
               {items.map((it) => {
                 const senderName = it.llmSenderName || it.rawSenderText || "Unknown Sender";
                 const isImportant = it.llmIsImportant;
@@ -280,7 +280,7 @@ export default function Home() {
                           {senderName}
                         </span>
                         <div className="flex items-center mt-1">
-                          <span className="text-[10px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded bg-gray-100/80 text-gray-500 truncate max-w-[140px] border border-gray-200/60">
+                          <span className="text-[10px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded bg-[#15263a]/10 text-gray-700 truncate max-w-[140px] border border-[#15263a]/20">
                             To: {recipient}
                           </span>
                         </div>
@@ -288,7 +288,7 @@ export default function Home() {
                     </div>
 
                     {/* Middle: Subject & Snippet */}
-                    <div className="flex-1 min-w-0 flex items-center gap-2 pr-6 pl-4 border-l border-gray-100">
+                    <div className="flex-1 min-w-0 flex items-center gap-2 pr-6 pl-4 border-l border-[#15263a]/20">
                       {it.llmMailType ? (
                         <span className="font-semibold text-[15px] text-gray-800 whitespace-nowrap">
                           {it.llmMailType}
@@ -332,14 +332,14 @@ export default function Home() {
             onClick={e => e.stopPropagation()}
           >
             {/* Left Column: Metadata */}
-            <div className="w-[350px] shrink-0 bg-gray-50 border-r border-gray-100 flex flex-col overflow-y-auto">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-gray-50/95 backdrop-blur z-10">
+            <div className="w-[350px] shrink-0 bg-gray-50 border-r border-[#15263a]/20 flex flex-col overflow-y-auto">
+              <div className="p-6 border-b border-[#15263a]/20 flex items-center justify-between sticky top-0 bg-gray-50/95 backdrop-blur z-10">
                 <h3 className="text-lg font-bold text-gray-800 tracking-tight flex items-center gap-2">
                   <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                   Analysis
                 </h3>
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={() => handleRescan(selectedItem.id)}
                     disabled={isRescanning}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
