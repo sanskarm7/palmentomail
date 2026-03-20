@@ -2,21 +2,31 @@
 //
 // Lightweight LLM interpreter for OCR mail results.
 // No predefined categories. No hardcoding. No assumptions.
-// Gemini simply describes the mail in its own words.
+// Gemini describes the mail in its own words.
+//
+// Designed to be swappable: the interpretMailWithGemini function can be
+// replaced with a local LLM wrapper (Ollama, LM Studio, etc.) without
+// changing the rest of the pipeline — just match MailInterpretation.
 
 import { GoogleGenAI } from "@google/genai";
 import type { OcrResult } from "./ocr";
 
 export interface MailInterpretation {
-  senderName: string | null;       // 0–1 confidence Gemini has in the sender
-  mailType: string;           // free-form label e.g. "insurance flyer", "bank notice", "advertising mailer"
-  shortSummary: string;       // 1–2 sentence human explanation
-  isImportant: boolean;       // does this look time-sensitive or financially relevant?
-  importanceReason: string;   // why Gemini decided that
+  senderName: string | null;
+  /** Confidence in senderName, 0.0–1.0. Stored as 0–100 integer in DB. */
+  confidence: number;
+  /** Free-form label e.g. "insurance flyer", "bank notice", "advertising mailer" */
+  mailType: string;
+  /** 1–2 sentence human explanation */
+  shortSummary: string;
+  /** Does this look time-sensitive or financially relevant? */
+  isImportant: boolean;
+  /** Why the LLM decided that */
+  importanceReason: string;
   rawJson?: any;
 }
 
-export interface GeminiInterpretOptions {
+export interface LlmInterpretOptions {
   model?: string;
   temperature?: number;
 }
@@ -31,7 +41,7 @@ const ai = new GoogleGenAI({
 
 export async function interpretMailWithGemini(
   ocr: OcrResult,
-  opts: GeminiInterpretOptions = {}
+  opts: LlmInterpretOptions = {}
 ): Promise<MailInterpretation> {
   if (!process.env.GOOGLE_API_KEY) {
     throw new Error("Missing GOOGLE_API_KEY");
@@ -45,7 +55,7 @@ You are analyzing OCR text extracted from a physical US mail piece.
 
 Your job:
 1. Identify the sender name if possible. If unclear, set "senderName" to null.
-2. Provide a confidence score (0–1) for your sender guess.
+2. Provide a confidence score (0.0–1.0) for your sender identification. Use 0 if senderName is null.
 3. Provide a free-form label "mailType" describing what kind of mail this is,
    in natural language. Examples (just examples, you are NOT limited to these):
    - "insurance solicitation"
@@ -66,6 +76,7 @@ STRICT FORMAT RULES:
 
 {
   "senderName": string | null,
+  "confidence": number,
   "mailType": string,
   "shortSummary": string,
   "isImportant": boolean,
@@ -98,6 +109,7 @@ ${JSON.stringify(ocr, null, 2)}
     console.error("Gemini returned no text");
     return {
       senderName: null,
+      confidence: 0,
       mailType: "unknown",
       shortSummary: "LLM returned no analysis for this mail piece.",
       isImportant: false,
@@ -112,6 +124,7 @@ ${JSON.stringify(ocr, null, 2)}
     console.error("Gemini JSON parse failed, falling back to generic interpretation");
     return {
       senderName: null,
+      confidence: 0,
       mailType: "unknown",
       shortSummary: "LLM could not reliably interpret this mail piece.",
       isImportant: false,
@@ -120,8 +133,13 @@ ${JSON.stringify(ocr, null, 2)}
     };
   }
 
+  const rawConfidence = typeof json.confidence === "number" ? json.confidence : 0;
+  // Clamp to [0, 1]
+  const confidence = Math.max(0, Math.min(1, rawConfidence));
+
   return {
     senderName: json.senderName ?? null,
+    confidence,
     mailType: String(json.mailType ?? "unknown"),
     shortSummary: String(json.shortSummary ?? ""),
     isImportant: Boolean(json.isImportant),

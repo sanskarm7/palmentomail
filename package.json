@@ -1,5 +1,5 @@
 {
-  "name": "mailops-next-sqlite",
+  "name": "mailops-next-mysql",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,19 +9,16 @@
     "lint": "eslint . --ext .ts,.tsx --fix || true",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "drizzle-kit migrate",
-    "ingest:once": "tsx src/scripts/ingest-once.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
-    "better-sqlite3": "^11.0.0",
     "cheerio": "1.0.0-rc.12",
     "drizzle-orm": "^0.36.3",
-    "fastest-levenshtein": "^1.0.16",
     "googleapis": "131.0.0",
+    "mysql2": "^3.11.3",
     "next": "14.2.5",
     "next-auth": "5.0.0-beta.20",
-    "node-cron": "3.0.3",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "sharp": "^0.34.5",

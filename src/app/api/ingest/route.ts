@@ -23,8 +23,8 @@ export async function GET() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const accessToken = (session as any).access_token as string | undefined;
-  const userId = (session as any).userId as string | undefined;
+  const accessToken = session.access_token;
+  const userId = session.userId;
 
   if (!accessToken || !userId) {
     return NextResponse.json(
@@ -63,7 +63,7 @@ export async function GET() {
       const tiles = parseInformedDeliveryTiles(html);
       console.log(`Found ${tiles.length} mail piece(s)`);
 
-      // Optional debug of first email HTML, guarded by env flag
+      // Optional debug: save first email HTML for inspection
       if (index === 0 && process.env.SAVE_DEBUG_EMAIL_HTML === "1") {
         const fs = await import("fs/promises");
         await fs.writeFile("./debug-email.html", html);
@@ -84,9 +84,7 @@ export async function GET() {
 
         const imageBuffer = await loadMailImage(gmail, msgId, imgUrl);
         let ocrResult: Awaited<ReturnType<typeof runOcr>> | null = null;
-        let llmInterpretation:
-          | Awaited<ReturnType<typeof interpretMailWithGemini>>
-          | null = null;
+        let llmResult: Awaited<ReturnType<typeof interpretMailWithGemini>> | null = null;
 
         if (imageBuffer) {
           try {
@@ -95,17 +93,15 @@ export async function GET() {
 
             if (process.env.GOOGLE_API_KEY) {
               try {
-                llmInterpretation = await interpretMailWithGemini(ocrResult);
+                llmResult = await interpretMailWithGemini(ocrResult);
                 console.log(
-                  `LLM: ${llmInterpretation.senderName || "no sender"} (${llmInterpretation.mailType})`
+                  `LLM: ${llmResult.senderName || "no sender"} (${llmResult.mailType}) confidence=${llmResult.confidence.toFixed(2)}`
                 );
-                if (llmInterpretation.senderName && !sender) {
-                  sender = llmInterpretation.senderName;
+                if (llmResult.senderName && !sender) {
+                  sender = llmResult.senderName;
                 }
               } catch (err: any) {
-                console.log(
-                  `LLM processing failed: ${err?.message || err}`
-                );
+                console.log(`LLM processing failed: ${err?.message || err}`);
               }
             }
           } catch (err: any) {
@@ -113,14 +109,12 @@ export async function GET() {
           }
         }
 
-        const exists = db
-          .select()
+        // Check for existing piece before insert
+        const exists = await db
+          .select({ id: messages.id })
           .from(messages)
-          .where(
-            and(eq(messages.imgHash, hash), eq(messages.userId, userId))
-          )
-          .limit(1)
-          .all();
+          .where(and(eq(messages.imgHash, hash), eq(messages.userId, userId)))
+          .limit(1);
 
         if (exists.length > 0) {
           console.log("      Skipped (duplicate mail piece)");
@@ -128,24 +122,25 @@ export async function GET() {
         }
 
         try {
-          db.insert(messages)
-            .values({
-              userId,
-              gmailMsgId: `${msgId}_${hash.slice(0, 8)}`,
-              deliveryDate,
-              rawSenderText: sender ?? null,
-              imgHash: hash,
-              llmSenderName: llmInterpretation?.senderName ?? null,
-              llmMailType: llmInterpretation?.mailType ?? null,
-              llmSummary: llmInterpretation?.shortSummary ?? null,
-              llmIsImportant: llmInterpretation?.isImportant ?? null,
-              llmImportanceReason:
-                llmInterpretation?.importanceReason ?? null,
-              llmRawJson: llmInterpretation?.rawJson
-                ? JSON.stringify(llmInterpretation.rawJson)
-                : null,
-            })
-            .run();
+          await db.insert(messages).values({
+            userId,
+            gmailMsgId: `${msgId}_${hash.slice(0, 8)}`,
+            deliveryDate,
+            rawSenderText: sender ?? null,
+            imgHash: hash,
+            llmSenderName: llmResult?.senderName ?? null,
+            // Store confidence as 0–100 integer (e.g. 0.87 → 87)
+            llmConfidence: llmResult
+              ? Math.round(llmResult.confidence * 100)
+              : null,
+            llmMailType: llmResult?.mailType ?? null,
+            llmSummary: llmResult?.shortSummary ?? null,
+            llmIsImportant: llmResult?.isImportant ? 1 : null,
+            llmImportanceReason: llmResult?.importanceReason ?? null,
+            llmRawJson: llmResult?.rawJson
+              ? JSON.stringify(llmResult.rawJson)
+              : null,
+          });
 
           inserted++;
           console.log("      Inserted");
@@ -187,9 +182,7 @@ async function loadMailImage(
     try {
       return await getImageByCid(gmail, messageId, imgUrl);
     } catch (err: any) {
-      console.log(
-        `      Failed to extract CID image: ${err?.message || err}`
-      );
+      console.log(`      Failed to extract CID image: ${err?.message || err}`);
       return null;
     }
   }
@@ -198,17 +191,13 @@ async function loadMailImage(
     try {
       const response = await fetch(imgUrl);
       if (!response.ok) {
-        console.log(
-          `      Failed to download image: HTTP ${response.status}`
-        );
+        console.log(`      Failed to download image: HTTP ${response.status}`);
         return null;
       }
       const arrayBuffer = await response.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } catch (err: any) {
-      console.log(
-        `      Failed to download remote image: ${err?.message || err}`
-      );
+      console.log(`      Failed to download remote image: ${err?.message || err}`);
       return null;
     }
   }

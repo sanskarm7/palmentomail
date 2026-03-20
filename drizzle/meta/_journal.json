@@ -1,26 +1,12 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "mysql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1760859656321,
-      "tag": "0000_early_hydra",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1763279984137,
-      "tag": "0001_needy_meteorite",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1763281802677,
-      "tag": "0002_removed_spam_tables",
+      "version": "5",
+      "when": 1773975722036,
+      "tag": "0000_boring_human_torch",
       "breakpoints": true
     }
   ]

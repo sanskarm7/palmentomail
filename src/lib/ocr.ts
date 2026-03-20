@@ -1,12 +1,9 @@
 // ocr.ts
 //
 // Pure OCR extractor using Tesseract.js.
-// No hardcoded heuristics.
-// No filtering.
-// No assumptions about sender, address, postage, etc.
+// No hardcoded heuristics. No filtering. No assumptions.
 //
-// This is what you want to pass into an LLM for a second-stage classifier
-// so the LLM can interpret the lines semantically.
+// Output is passed into an LLM for second-stage semantic classification.
 
 import sharp from "sharp";
 import type { Worker as TesseractWorker, RecognizeResult } from "tesseract.js";
@@ -81,15 +78,18 @@ export async function runOcr(image: ImageInput): Promise<OcrResult> {
     y1: l.bbox?.y1 ?? 0,
   }));
 
-  // Log everything so you see *exactly* what the LLM will receive
-  console.log("=== OCR RAW TEXT ===\n", rawText);
-  console.log("\n=== OCR NORMALIZED ===\n", normalizedText);
-  console.log("\n=== OCR LINES ===");
-  lines.forEach((l, i) => {
-    console.log(
-      `[${i}] "${l.text}" | bbox=(${l.x0},${l.y0}) → (${l.x1},${l.y1})`
-    );
-  });
+  // Gate verbose logging behind env flag (same flag used in gmail.ts)
+  const debug = !process.env.DISABLE_DEBUG_LOGGING;
+  if (debug) {
+    console.log("=== OCR RAW TEXT ===\n", rawText);
+    console.log("\n=== OCR NORMALIZED ===\n", normalizedText);
+    console.log("\n=== OCR LINES ===");
+    lines.forEach((l, i) => {
+      console.log(
+        `[${i}] "${l.text}" | bbox=(${l.x0},${l.y0}) → (${l.x1},${l.y1})`
+      );
+    });
+  }
 
   return { rawText, normalizedText, lines };
 }

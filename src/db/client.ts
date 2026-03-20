@@ -1,9 +1,12 @@
-
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import * as schema from "./schema";
 
-const dbFile = process.env.SQLITE_URL || "./data/sqlite.db";
-const sqlite = new Database(dbFile);
-export const db = drizzle(sqlite, { schema });
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is not set");
+}
+
+const pool = mysql.createPool(process.env.DATABASE_URL);
+
+export const db = drizzle(pool, { schema, mode: "default" });
 export type DB = typeof db;

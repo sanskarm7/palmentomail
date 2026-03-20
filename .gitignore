@@ -4,6 +4,9 @@ node_modules
 .env.development.local
 .env.test.local
 .env.production.local
-.debug-email.html
+debug-email.html
 data/
 .next/
+# Tesseract language model — downloaded automatically at runtime by tesseract.js
+eng.traineddata
+*.traineddata
