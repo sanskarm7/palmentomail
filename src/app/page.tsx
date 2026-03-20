@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Image from "next/image";
 
@@ -29,6 +29,35 @@ export default function Home() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isRescanning, setIsRescanning] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const [activeRecipient, setActiveRecipient] = useState<string | null>(null);
+
+  const stats = useMemo(() => {
+    const uniqueMap = new Map<string, { name: string; count: number }>();
+    let unnamedCount = 0;
+    
+    items.forEach(it => {
+      const raw = it.llmRecipientName?.trim() || "";
+      const lower = raw.toLowerCase();
+      if (lower === "" || lower === "null" || lower === "current resident") {
+        unnamedCount++;
+      } else {
+        if (!uniqueMap.has(lower)) {
+          uniqueMap.set(lower, { name: raw, count: 0 });
+        }
+        uniqueMap.get(lower)!.count++;
+      }
+    });
+    
+    return Array.from(uniqueMap.values()).sort((a,b) => b.count - a.count);
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (!activeRecipient) return items;
+    return items.filter(it => {
+      const lower = (it.llmRecipientName?.trim() || "").toLowerCase();
+      return lower === activeRecipient.toLowerCase();
+    });
+  }, [items, activeRecipient]);
 
   useEffect(() => {
     if (logsEndRef.current) {
@@ -153,7 +182,7 @@ export default function Home() {
           <button
             onClick={ingest}
             disabled={loading}
-            className="w-full py-3.5 px-4 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:bg-[#1f3653] disabled:text-gray-400 rounded-xl font-semibold transition-colors flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0"
+            className="w-full py-3.5 px-4 bg-[#1f3653] hover:bg-[#2a4566] active:bg-[#1f3653] disabled:opacity-50 disabled:text-gray-400 text-white rounded-xl font-semibold transition-colors flex items-center justify-center shadow-lg shrink-0"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -195,11 +224,26 @@ export default function Home() {
           )}
         </div>
 
-        <nav className="flex-1 px-3 space-y-1.5 font-medium">
-          <button className="w-full flex items-center gap-3 px-4 py-2.5 bg-[#1f3653] text-white rounded-lg">
-            <svg className="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-            Total Mail
+        <nav className="flex-1 px-3 space-y-1.5 font-medium overflow-y-auto">
+          <button 
+            onClick={() => setActiveRecipient(null)}
+            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors ${!activeRecipient ? 'bg-[#1f3653] text-white' : 'text-gray-400 hover:bg-[#1f3653]/50 hover:text-gray-200'}`}
+          >
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              Total Mail
+            </div>
           </button>
+
+          {stats.map(stat => (
+            <button 
+              key={stat.name}
+              onClick={() => setActiveRecipient(stat.name)}
+              className={`w-full flex items-start text-left justify-between px-4 py-2.5 rounded-lg transition-colors ${activeRecipient?.toLowerCase() === stat.name.toLowerCase() ? 'bg-[#1f3653] text-white' : 'text-gray-400 hover:bg-[#1f3653]/50 hover:text-gray-200'}`}
+            >
+              <span className="truncate text-sm">{stat.name}</span>
+            </button>
+          ))}
         </nav>
 
         <div className="p-5 bg-[#0f1d2c] border-t border-[#1f3653]">
@@ -221,9 +265,11 @@ export default function Home() {
         {/* HEADER */}
         <header className="h-16 border-b border-[#15263a]/30 flex items-center justify-between px-6 shrink-0 bg-[#D3D3D3]">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-gray-800 tracking-tight">Inbox</h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-xs font-bold tracking-wide uppercase text-blue-600">
-              {items.length} pieces
+            <h2 className="text-xl font-bold text-gray-800 tracking-tight">
+              {activeRecipient ? activeRecipient : "Total Inbox"}
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full bg-[#15263a]/10 text-xs font-bold tracking-wide uppercase text-[#15263a] border border-[#15263a]/20">
+              {filteredItems.length} pieces
             </span>
           </div>
           <button
@@ -237,15 +283,14 @@ export default function Home() {
 
         {/* MAIL LIST */}
         <div className="flex-1 overflow-y-auto bg-[#D3D3D3]">
-          {items.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
               <svg className="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
               <p className="text-lg font-medium text-gray-500">No mail pieces found.</p>
-              <p className="text-sm mt-1 text-gray-400">Click &quot;Fetch Mail&quot; to scan your recent USPS emails.</p>
             </div>
           ) : (
             <div className="divide-y divide-[#15263a]/20">
-              {items.map((it) => {
+              {filteredItems.map((it) => {
                 const senderName = it.llmSenderName || it.rawSenderText || "Unknown Sender";
                 const isImportant = it.llmIsImportant;
                 const recipient = it.llmRecipientName && it.llmRecipientName.toLowerCase() !== "null" ? it.llmRecipientName : "Current Resident";
