@@ -30,6 +30,7 @@ export default function Home() {
   const [isRescanning, setIsRescanning] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [activeRecipient, setActiveRecipient] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const stats = useMemo(() => {
     const uniqueMap = new Map<string, { name: string; count: number }>();
@@ -171,8 +172,16 @@ export default function Home() {
 
   return (
     <div className="h-screen w-full flex overflow-hidden bg-[#15263a] font-sans">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* SIDEBAR */}
-      <aside className="w-64 bg-[#15263a] text-white flex flex-col shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#15263a] text-white flex flex-col shrink-0 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
         <div className="p-6 flex items-center gap-3">
           <Image src="/mailwolf_logo.png" alt="Logo" width={52} height={52} className="object-contain shrink-0 drop-shadow-md" />
           <span className="text-2xl font-bold tracking-tight">MailWolf</span>
@@ -226,7 +235,7 @@ export default function Home() {
 
         <nav className="flex-1 px-3 space-y-1.5 font-medium overflow-y-auto">
           <button 
-            onClick={() => setActiveRecipient(null)}
+            onClick={() => { setActiveRecipient(null); setIsSidebarOpen(false); }}
             className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors ${!activeRecipient ? 'bg-[#1f3653] text-white' : 'text-gray-400 hover:bg-[#1f3653]/50 hover:text-gray-200'}`}
           >
             <div className="flex items-center gap-3">
@@ -238,7 +247,7 @@ export default function Home() {
           {stats.map(stat => (
             <button 
               key={stat.name}
-              onClick={() => setActiveRecipient(stat.name)}
+              onClick={() => { setActiveRecipient(stat.name); setIsSidebarOpen(false); }}
               className={`w-full flex items-start text-left justify-between px-4 py-2.5 rounded-lg transition-colors ${activeRecipient?.toLowerCase() === stat.name.toLowerCase() ? 'bg-[#1f3653] text-white' : 'text-gray-400 hover:bg-[#1f3653]/50 hover:text-gray-200'}`}
             >
               <span className="truncate text-sm">{stat.name}</span>
@@ -260,11 +269,18 @@ export default function Home() {
       </aside>
 
       {/* MAIN INBOX PANELS */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#606c78] shadow-2xl z-10 my-3 mr-3 rounded-2xl overflow-hidden border border-[#15263a]">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#606c78] z-10 md:my-3 md:mr-3 md:max-h-[calc(100vh-24px)] md:rounded-2xl overflow-hidden border-0 md:border md:border-[#15263a] md:shadow-2xl">
 
         {/* HEADER */}
         <header className="h-16 border-b border-[#15263a]/30 flex items-center justify-between px-6 shrink-0 bg-[#D3D3D3]">
           <div className="flex items-center gap-4">
+            {/* Hamburger Button for Mobile */}
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden p-2 -ml-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
             <h2 className="text-xl font-bold text-gray-800 tracking-tight">
               {activeRecipient ? activeRecipient : "Total Inbox"}
             </h2>
@@ -312,7 +328,7 @@ export default function Home() {
                     className={`group flex items-center px-4 py-3.5 cursor-pointer hover:bg-gray-50 hover:shadow-[inset_4px_0_0_0_rgba(59,130,246,0.6)] transition-all ${isImportant ? 'bg-orange-50/20 hover:bg-orange-50/60 hover:shadow-[inset_4px_0_0_0_rgba(249,115,22,0.6)]' : ''}`}
                   >
                     {/* Left: Indicator & Sender */}
-                    <div className="w-56 shrink-0 flex items-start gap-4 pr-3">
+                    <div className="w-40 sm:w-56 shrink-0 flex items-start gap-3 sm:gap-4 pr-3">
                       <div className="pt-1.5 shrink-0">
                         {isImportant ? (
                           <div title={it.llmImportanceReason || "Marked Important"} className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] animate-pulse"></div>
@@ -325,7 +341,7 @@ export default function Home() {
                           {senderName}
                         </span>
                         <div className="flex items-center mt-1">
-                          <span className="text-[10px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded bg-[#15263a]/10 text-gray-700 truncate max-w-[140px] border border-[#15263a]/20">
+                          <span className="text-[10px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded bg-[#15263a]/10 text-gray-700 truncate max-w-[100px] sm:max-w-[140px] border border-[#15263a]/20">
                             To: {recipient}
                           </span>
                         </div>
@@ -335,18 +351,18 @@ export default function Home() {
                     {/* Middle: Subject & Snippet */}
                     <div className="flex-1 min-w-0 flex items-center gap-2 pr-6 pl-4 border-l border-[#15263a]/20">
                       {it.llmMailType ? (
-                        <span className="font-semibold text-[15px] text-gray-800 whitespace-nowrap">
+                        <span className="font-semibold text-[14px] sm:text-[15px] text-gray-800 truncate">
                           {it.llmMailType}
                         </span>
                       ) : (
-                        <span className="font-medium text-[15px] text-gray-400 italic whitespace-nowrap">
+                        <span className="font-medium text-[14px] sm:text-[15px] text-gray-400 italic truncate">
                           Uncategorized
                         </span>
                       )}
 
-                      <span className="text-gray-300 shrink-0 font-medium">-</span>
+                      <span className="text-gray-300 shrink-0 font-medium hidden sm:block">-</span>
 
-                      <span className="text-[15px] text-gray-500 truncate font-normal">
+                      <span className="text-[14px] sm:text-[15px] text-gray-500 truncate font-normal hidden sm:block">
                         {it.llmSummary || "No snippet available for this piece."}
                       </span>
                     </div>
