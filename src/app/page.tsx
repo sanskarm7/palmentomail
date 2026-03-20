@@ -27,6 +27,7 @@ export default function Home() {
   const [ingestLogs, setIngestLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [isRescanning, setIsRescanning] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +36,28 @@ export default function Home() {
     }
   }, [ingestLogs]);
 
+  async function handleRescan(id: number) {
+    if (!selectedItem || isRescanning) return;
+    setIsRescanning(true);
+    try {
+      const res = await fetch(`/api/mail/${id}/rescan`, { method: "POST" });
+      if (!res.ok) throw new Error("Rescan failed");
+      const { item } = await res.json();
+      
+      // Update global list dynamically
+      setItems(prev => prev.map(it => it.id === id ? item : it));
+      // Update modal view recursively
+      setSelectedItem(item);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to rescan mail piece. See console for details.");
+    } finally {
+      setIsRescanning(false);
+    }
+  }
+
   async function ingest() {
+    if (loading) return;
     setLoading(true);
     setShowLogs(true);
     setIngestLogs(["Initializing secure connection to USPS & Gemini..."]);
@@ -44,17 +66,17 @@ export default function Home() {
       const response = await fetch('/api/ingest');
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      
+
       if (reader) {
         let buffer = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          
+
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split('\n\n');
           buffer = parts.pop() || "";
-          
+
           for (const msg of parts) {
             if (msg.startsWith('data: ')) {
               try {
@@ -64,7 +86,7 @@ export default function Home() {
                 } else if (data.type === 'error') {
                   setIngestLogs(prev => [...prev, `❌ Error: ${data.error}`]);
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
           }
         }
@@ -72,7 +94,7 @@ export default function Home() {
     } catch (e) {
       setIngestLogs(prev => [...prev, `❌ Network connection failed.`]);
     }
-    
+
     setLoading(false);
     await loadQueue();
   }
@@ -145,14 +167,14 @@ export default function Home() {
           {showLogs && (
             <div className="bg-[#0a121d] rounded-xl flex flex-col h-64 border border-[#1f3653] shadow-inner transition-all relative group overflow-hidden">
               {/* Close Button */}
-              <button 
+              <button
                 onClick={() => setShowLogs(false)}
                 className="absolute top-2 right-2 text-gray-400 hover:text-white p-1.5 rounded-md hover:bg-gray-800 transition-colors z-10"
                 title="Close logs"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
-              
+
               {/* Scrollable Context */}
               <div className="p-4 overflow-y-auto text-[11px] font-mono text-gray-300 flex flex-col gap-1.5 flex-1">
                 {ingestLogs.map((log, i) => (
@@ -219,7 +241,7 @@ export default function Home() {
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
               <svg className="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
               <p className="text-lg font-medium text-gray-500">No mail pieces found.</p>
-              <p className="text-sm mt-1 text-gray-400">Click &quot;Fetch Digests&quot; to scan your recent USPS emails.</p>
+              <p className="text-sm mt-1 text-gray-400">Click &quot;Fetch Mail&quot; to scan your recent USPS emails.</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -301,11 +323,11 @@ export default function Home() {
 
       {/* MAIL VIEW MODAL */}
       {selectedItem && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm transition-opacity"
           onClick={() => setSelectedItem(null)}
         >
-          <div 
+          <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex overflow-hidden animate-fade-in-up"
             onClick={e => e.stopPropagation()}
           >
@@ -314,11 +336,25 @@ export default function Home() {
               <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-gray-50/95 backdrop-blur z-10">
                 <h3 className="text-lg font-bold text-gray-800 tracking-tight flex items-center gap-2">
                   <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                  Mail Details
+                  Analysis
                 </h3>
-                <button onClick={() => setSelectedItem(null)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => handleRescan(selectedItem.id)}
+                    disabled={isRescanning}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isRescanning ? (
+                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    )}
+                    {isRescanning ? "Scanning..." : "Re-scan AI"}
+                  </button>
+                  <button onClick={() => setSelectedItem(null)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
               </div>
 
               <div className="p-6 space-y-6">
@@ -326,7 +362,7 @@ export default function Home() {
                   <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Sender</h4>
                   <p className="font-bold text-gray-900 text-lg">{selectedItem.llmSenderName || selectedItem.rawSenderText || "Unknown Sender"}</p>
                 </div>
-                
+
                 <div>
                   <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Recipient</h4>
                   <p className="font-medium text-gray-700">{selectedItem.llmRecipientName && selectedItem.llmRecipientName.toLowerCase() !== "null" ? selectedItem.llmRecipientName : "Current Resident"}</p>
@@ -364,7 +400,7 @@ export default function Home() {
             <div className="flex-1 bg-gray-100 relative flex items-center justify-center p-6">
               {selectedItem.imgStoragePath ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img 
+                <img
                   src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/mail-images/${selectedItem.imgStoragePath}`}
                   alt="Mail Piece Scan"
                   className="max-w-full max-h-full object-contain rounded-xl shadow-md border border-gray-200/50"

@@ -14,10 +14,11 @@ export async function GET() {
     .select({
       id: mailPieces.id,
       userId: mailPieces.userId,
-      gmailMsgId: emails.id,
+      emailId: emails.id,
       deliveryDate: emails.deliveryDate,
       rawSenderText: mailPieces.rawSenderText,
       imgHash: mailPieces.imgHash,
+      imgStoragePath: mailPieces.imgStoragePath,
       llmSenderName: mailPieces.llmSenderName,
       llmRecipientName: mailPieces.llmRecipientName,
       llmConfidence: mailPieces.llmConfidence,
