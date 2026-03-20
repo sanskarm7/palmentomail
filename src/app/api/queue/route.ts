@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db/client";
-import { messages } from "@/db/schema";
+import { emails, mailPieces } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 
 export async function GET() {
@@ -11,10 +11,27 @@ export async function GET() {
   }
 
   const rows = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.userId, session.userId))
-    .orderBy(desc(messages.id))
+    .select({
+      id: mailPieces.id,
+      userId: mailPieces.userId,
+      gmailMsgId: emails.id,
+      deliveryDate: emails.deliveryDate,
+      rawSenderText: mailPieces.rawSenderText,
+      imgHash: mailPieces.imgHash,
+      llmSenderName: mailPieces.llmSenderName,
+      llmRecipientName: mailPieces.llmRecipientName,
+      llmConfidence: mailPieces.llmConfidence,
+      llmMailType: mailPieces.llmMailType,
+      llmSummary: mailPieces.llmSummary,
+      llmIsImportant: mailPieces.llmIsImportant,
+      llmImportanceReason: mailPieces.llmImportanceReason,
+      llmRawJson: mailPieces.llmRawJson,
+      createdAt: mailPieces.createdAt,
+    })
+    .from(mailPieces)
+    .innerJoin(emails, eq(mailPieces.emailId, emails.id))
+    .where(eq(mailPieces.userId, session.userId))
+    .orderBy(desc(mailPieces.id))
     .limit(50);
 
   return NextResponse.json({ items: rows });

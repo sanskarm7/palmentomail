@@ -1,0 +1,1 @@
+ALTER TABLE `mail_pieces` ADD `llm_recipient_name` text;

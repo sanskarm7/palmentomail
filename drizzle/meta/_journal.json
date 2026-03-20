@@ -8,6 +8,20 @@
       "when": 1773975722036,
       "tag": "0000_boring_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1773986340016,
+      "tag": "0001_brave_shiva",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1773986858759,
+      "tag": "0002_tearful_patch",
+      "breakpoints": true
     }
   ]
 }

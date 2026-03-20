@@ -7,10 +7,10 @@ import {
   getImageByCid,
 } from "@/lib/gmail";
 import { db } from "@/db/client";
-import { messages } from "@/db/schema";
+import { emails, mailPieces } from "@/db/schema";
 import { parseInformedDeliveryTiles } from "@/lib/parser";
 import { runOcr } from "@/lib/ocr";
-import { interpretMailWithGemini } from "@/lib/llm";
+import { interpretMailWithGemini, interpretMailWithGeminiVision, resetLlmCallCount } from "@/lib/llm";
 import { createHash } from "crypto";
 import { eq, and } from "drizzle-orm";
 
@@ -41,14 +41,31 @@ export async function GET() {
     const query = process.env.GMAIL_QUERY || DEFAULT_QUERY;
 
     console.log("Searching Gmail with query:", query);
-    const list = await listDigestMessages(gmail, query);
-    console.log(`Found ${list.length} messages`);
+    const allMessages = await listDigestMessages(gmail, query);
+    const maxMessages = parseInt(process.env.GMAIL_MAX_MESSAGES ?? "5", 10);
+    const list = allMessages.slice(0, isNaN(maxMessages) ? 5 : maxMessages);
+    console.log(`Found ${allMessages.length} messages, processing ${list.length}`);
+
+    // Reset per-run LLM call counter (protects daily quota)
+    resetLlmCallCount();
 
     let inserted = 0;
 
     for (const [index, msg] of list.entries()) {
       const msgId = msg.id;
       if (!msgId) continue;
+
+      // Duplicate check: if email is already in the db, skip fetching HTML & LLM
+      const existingEmail = await db
+        .select({ id: emails.id })
+        .from(emails)
+        .where(and(eq(emails.id, msgId), eq(emails.userId, userId)))
+        .limit(1);
+
+      if (existingEmail.length > 0) {
+        console.log(`      Skipped msg ${msgId} — already ingested`);
+        continue;
+      }
 
       console.log(`Processing message ${msgId}...`);
 
@@ -70,6 +87,20 @@ export async function GET() {
         console.log("Saved email HTML to debug-email.html");
       }
 
+      const emailDeliveryDate = tiles[0]?.deliveryDate || "";
+
+      // Insert Email record
+      try {
+        await db.insert(emails).values({
+          id: msgId,
+          userId,
+          deliveryDate: emailDeliveryDate,
+        });
+      } catch (err: any) {
+        console.log(`      Failed to insert email record: ${err?.message || err}`);
+        continue; // Skip processing pieces if the parent email record fails
+      }
+
       for (const tile of tiles) {
         const imgUrl = tile.imageUrl || "";
         const deliveryDate = tile.deliveryDate || "";
@@ -86,12 +117,29 @@ export async function GET() {
         let ocrResult: Awaited<ReturnType<typeof runOcr>> | null = null;
         let llmResult: Awaited<ReturnType<typeof interpretMailWithGemini>> | null = null;
 
-        if (imageBuffer) {
-          try {
-            ocrResult = await runOcr(imageBuffer);
-            console.log(`OCR extracted ${ocrResult.lines.length} lines`);
+        if (imageBuffer && process.env.GOOGLE_API_KEY) {
+          const visionMode = process.env.LLM_VISION_MODE === "1";
 
-            if (process.env.GOOGLE_API_KEY) {
+          if (visionMode) {
+            // --- Vision path: send image directly to Gemini, skip OCR ---
+            console.log("[vision] Sending image directly to Gemini");
+            try {
+              llmResult = await interpretMailWithGeminiVision(imageBuffer);
+              console.log(
+                `[vision] LLM: ${llmResult.senderName || "no sender"} (${llmResult.mailType}) confidence=${llmResult.confidence.toFixed(2)}`
+              );
+              if (llmResult.senderName && !sender) {
+                sender = llmResult.senderName;
+              }
+            } catch (err: any) {
+              console.log(`[vision] LLM processing failed: ${err?.message || err}`);
+            }
+          } else {
+            // --- OCR path: run Tesseract first, then pass text to Gemini ---
+            try {
+              ocrResult = await runOcr(imageBuffer);
+              console.log(`OCR extracted ${ocrResult.lines.length} lines`);
+
               try {
                 llmResult = await interpretMailWithGemini(ocrResult);
                 console.log(
@@ -103,17 +151,19 @@ export async function GET() {
               } catch (err: any) {
                 console.log(`LLM processing failed: ${err?.message || err}`);
               }
+            } catch (err: any) {
+              console.log(`OCR processing failed: ${err?.message || err}`);
             }
-          } catch (err: any) {
-            console.log(`OCR processing failed: ${err?.message || err}`);
           }
+        } else if (imageBuffer && !process.env.GOOGLE_API_KEY) {
+          console.log("No GOOGLE_API_KEY — skipping LLM step");
         }
 
-        // Check for existing piece before insert
+        // Check for existing mail piece in case email already had partial inserts
         const exists = await db
-          .select({ id: messages.id })
-          .from(messages)
-          .where(and(eq(messages.imgHash, hash), eq(messages.userId, userId)))
+          .select({ id: mailPieces.id })
+          .from(mailPieces)
+          .where(and(eq(mailPieces.imgHash, hash), eq(mailPieces.userId, userId)))
           .limit(1);
 
         if (exists.length > 0) {
@@ -122,13 +172,13 @@ export async function GET() {
         }
 
         try {
-          await db.insert(messages).values({
+          await db.insert(mailPieces).values({
+            emailId: msgId,
             userId,
-            gmailMsgId: `${msgId}_${hash.slice(0, 8)}`,
-            deliveryDate,
             rawSenderText: sender ?? null,
             imgHash: hash,
             llmSenderName: llmResult?.senderName ?? null,
+            llmRecipientName: llmResult?.recipientName ?? null,
             // Store confidence as 0–100 integer (e.g. 0.87 → 87)
             llmConfidence: llmResult
               ? Math.round(llmResult.confidence * 100)
@@ -143,9 +193,9 @@ export async function GET() {
           });
 
           inserted++;
-          console.log("      Inserted");
+          console.log("      Inserted mail piece");
         } catch (err: any) {
-          console.log(`      Insert error: ${err?.message || err}`);
+          console.log(`      Insert piece error: ${err?.message || err}`);
         }
       }
     }
