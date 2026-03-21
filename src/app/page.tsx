@@ -38,7 +38,7 @@ export default function Home() {
   const stats = useMemo(() => {
     const uniqueMap = new Map<string, { name: string; count: number }>();
     let unnamedCount = 0;
-    
+
     items.forEach(it => {
       const raw = it.llmRecipientName?.trim() || "";
       const lower = raw.toLowerCase();
@@ -51,8 +51,8 @@ export default function Home() {
         uniqueMap.get(lower)!.count++;
       }
     });
-    
-    return Array.from(uniqueMap.values()).sort((a,b) => b.count - a.count);
+
+    return Array.from(uniqueMap.values()).sort((a, b) => b.count - a.count);
   }, [items]);
 
   const filteredItems = useMemo(() => {
@@ -164,11 +164,11 @@ export default function Home() {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-[#15263a]">
         <div className="mb-8 flex items-center gap-4">
-          <Image src="/mailwolf_logo.png" alt="MailWolf Logo" width={80} height={80} className="rounded-2xl shadow-xl" />
-          <h1 className="text-6xl font-extrabold text-white tracking-tight">MailWolf</h1>
+          <Image src="/palmentomail_logo.png" alt="palmentomail Logo" width={80} height={80} className="rounded-2xl shadow-xl" />
+          <h1 className="text-6xl font-extrabold text-white tracking-tight">palmentomail</h1>
         </div>
         <p className="mb-10 text-blue-200 text-lg tracking-wide font-light">Intelligent USPS Physical Mail Processing</p>
-        
+
         <button
           onClick={() => signIn('google')}
           className="px-8 py-3.5 rounded-full bg-white text-[#15263a] font-bold text-lg hover:bg-gray-100 shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform hover:scale-105 active:scale-95 flex items-center gap-3"
@@ -202,7 +202,7 @@ export default function Home() {
     <div className="h-screen w-full flex overflow-hidden bg-[#15263a] font-sans">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         />
@@ -211,8 +211,8 @@ export default function Home() {
       {/* SIDEBAR */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#15263a] text-white flex flex-col shrink-0 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
         <div className="p-6 flex items-center gap-3">
-          <Image src="/mailwolf_logo.png" alt="Logo" width={52} height={52} className="object-contain shrink-0 drop-shadow-md" />
-          <span className="text-2xl font-bold tracking-tight">MailWolf</span>
+          <Image src="/palmentomail_logo.png" alt="Logo" width={52} height={52} className="object-contain shrink-0 drop-shadow-md" />
+          <span className="text-2xl font-bold tracking-tight">palmentomail</span>
         </div>
 
         <div className="px-5 mb-8 mt-2 flex flex-col gap-3">
@@ -222,13 +222,13 @@ export default function Home() {
               disabled={loading}
               className="w-full py-3.5 px-4 bg-[#1f3653] hover:bg-[#2a4566] active:bg-[#1f3653] disabled:opacity-50 disabled:text-gray-400 text-white rounded-xl font-semibold transition-colors flex items-center justify-center shadow-lg shrink-0"
             >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                Processing...
-              </span>
-            ) : "Fetch Mail"}
-          </button>
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  Processing...
+                </span>
+              ) : "Fetch Mail"}
+            </button>
           )}
 
           {/* LOGS WINDOW */}
@@ -264,7 +264,7 @@ export default function Home() {
         </div>
 
         <nav className="flex-1 px-3 space-y-1.5 font-medium overflow-y-auto">
-          <button 
+          <button
             onClick={() => { setActiveRecipient(null); setIsSidebarOpen(false); }}
             className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors ${!activeRecipient ? 'bg-[#1f3653] text-white' : 'text-gray-400 hover:bg-[#1f3653]/50 hover:text-gray-200'}`}
           >
@@ -275,7 +275,7 @@ export default function Home() {
           </button>
 
           {stats.map(stat => (
-            <button 
+            <button
               key={stat.name}
               onClick={() => { setActiveRecipient(stat.name); setIsSidebarOpen(false); }}
               className={`w-full flex items-start text-left justify-between px-4 py-2.5 rounded-lg transition-colors ${activeRecipient?.toLowerCase() === stat.name.toLowerCase() ? 'bg-[#1f3653] text-white' : 'text-gray-400 hover:bg-[#1f3653]/50 hover:text-gray-200'}`}
@@ -313,7 +313,7 @@ export default function Home() {
         <header className="h-16 border-b border-[#15263a]/30 flex items-center justify-between px-6 shrink-0 bg-[#D3D3D3]">
           <div className="flex items-center gap-4">
             {/* Hamburger Button for Mobile */}
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden p-2 -ml-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-200 transition-colors"
             >

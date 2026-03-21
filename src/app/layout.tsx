@@ -2,7 +2,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata = {
-  title: 'MailWolf MVP',
+  title: 'palmentomail',
   description: 'Automate physical spam mail decisions',
 }
 
