@@ -427,11 +427,11 @@ export default function Home() {
           onClick={() => setSelectedItem(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex overflow-hidden animate-fade-in-up"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl md:h-[85vh] max-h-[90vh] flex flex-col md:flex-row overflow-y-auto md:overflow-hidden animate-fade-in-up"
             onClick={e => e.stopPropagation()}
           >
             {/* Left Column: Metadata */}
-            <div className="w-[350px] shrink-0 bg-gray-50 border-r border-[#15263a]/20 flex flex-col overflow-y-auto">
+            <div className="w-full md:w-[350px] shrink-0 bg-gray-50 border-b md:border-b-0 md:border-r border-[#15263a]/20 flex flex-col overflow-visible md:overflow-y-auto">
               <div className="p-6 border-b border-[#15263a]/20 flex items-center justify-between sticky top-0 bg-gray-50/95 backdrop-blur z-10">
                 <h3 className="text-lg font-bold text-gray-800 tracking-tight flex items-center gap-2">
                   <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -498,7 +498,7 @@ export default function Home() {
             </div>
 
             {/* Right Column: Image Viewer */}
-            <div className="flex-1 bg-gray-100 relative flex items-center justify-center p-6">
+            <div className="flex-1 bg-gray-100 relative flex items-center justify-center p-6 min-h-[350px] md:min-h-0 overflow-y-auto">
               {selectedItem.imgStoragePath ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
