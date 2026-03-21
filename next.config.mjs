@@ -10,17 +10,5 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  webpack: (config, { isServer }) => {
-    // Fix for tesseract.js in Next.js server-side
-    if (isServer) {
-      // Exclude tesseract.js from webpack bundling on server
-      config.externals = config.externals || [];
-      config.externals.push({
-        'tesseract.js': 'commonjs tesseract.js'
-      });
-    }
-    
-    return config;
-  },
 };
 export default nextConfig;

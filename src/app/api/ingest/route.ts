@@ -9,8 +9,7 @@ import {
 import { db } from "@/db/client";
 import { emails, mailPieces } from "@/db/schema";
 import { parseInformedDeliveryTiles } from "@/lib/parser";
-import { runOcr } from "@/lib/ocr";
-import { interpretMailWithGemini, interpretMailWithGeminiVision, resetLlmCallCount } from "@/lib/llm";
+import { interpretMailWithGemini, resetLlmCallCount } from "@/lib/llm";
 import { createHash } from "crypto";
 import { eq, and } from "drizzle-orm";
 import { supabase } from "@/lib/supabase";
@@ -115,7 +114,6 @@ export async function GET() {
             sendLog(`  ↳ Processing piece: ${sender?.slice(0, 40) || "(Unknown Provider)"}`);
 
             const imageBuffer = await loadMailImage(gmail, msgId, imgUrl);
-            let ocrResult: Awaited<ReturnType<typeof runOcr>> | null = null;
             let llmResult: Awaited<ReturnType<typeof interpretMailWithGemini>> | null = null;
             let finalStoragePath: string | null = null;
 
@@ -138,33 +136,13 @@ export async function GET() {
             }
 
             if (imageBuffer && process.env.GOOGLE_API_KEY) {
-              const visionMode = process.env.LLM_VISION_MODE === "1";
-
-              if (visionMode) {
-                sendLog("    [Vision Mode] Analyzing image with Gemini...");
-                try {
-                  llmResult = await interpretMailWithGeminiVision(imageBuffer);
-                  sendLog(`    [Result] Assessed as: ${llmResult.senderName || "Unknown Sender"} (${llmResult.mailType})`);
-                  if (llmResult.senderName && !sender) sender = llmResult.senderName;
-                } catch (err: any) {
-                  sendLog(`    [Error] Gemini processing failed: ${err?.message || err}`);
-                }
-              } else {
-                try {
-                  sendLog("    [OCR Mode] Running Tesseract OCR...");
-                  ocrResult = await runOcr(imageBuffer);
-                  sendLog(`    [OCR Mode] Extracted ${ocrResult.lines.length} lines. Analyzing with Gemini...`);
-
-                  try {
-                    llmResult = await interpretMailWithGemini(ocrResult);
-                    sendLog(`    [Result] Assessed as: ${llmResult.senderName || "Unknown Sender"} (${llmResult.mailType})`);
-                    if (llmResult.senderName && !sender) sender = llmResult.senderName;
-                  } catch (err: any) {
-                    sendLog(`    [Error] Gemini processing failed: ${err?.message || err}`);
-                  }
-                } catch (err: any) {
-                  sendLog(`    [Error] OCR processing failed: ${err?.message || err}`);
-                }
+              sendLog("    [Vision Mode] Analyzing image with Gemini...");
+              try {
+                llmResult = await interpretMailWithGemini(imageBuffer);
+                sendLog(`    [Result] Assessed as: ${llmResult.senderName || "Unknown Sender"} (${llmResult.mailType})`);
+                if (llmResult.senderName && !sender) sender = llmResult.senderName;
+              } catch (err: any) {
+                sendLog(`    [Error] Gemini processing failed: ${err?.message || err}`);
               }
             } else if (imageBuffer && !process.env.GOOGLE_API_KEY) {
               sendLog("    [Skipped] No GOOGLE_API_KEY found.");

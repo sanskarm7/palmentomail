@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db/client";
 import { mailPieces, emails } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { interpretMailWithGeminiVision } from "@/lib/llm";
+import { interpretMailWithGemini } from "@/lib/llm";
 
 export async function POST(
   request: NextRequest,
@@ -51,7 +51,7 @@ export async function POST(
     const buffer = Buffer.from(arrayBuffer);
 
     // 3. Scan directly with Gemini Vision Processing
-    const result = await interpretMailWithGeminiVision(buffer);
+    const result = await interpretMailWithGemini(buffer);
 
     // 4. Safely push new LLM metadata back down into Postgres
     await db.update(mailPieces)

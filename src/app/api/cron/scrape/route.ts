@@ -8,8 +8,7 @@ import {
   getImageByCid,
 } from "@/lib/gmail";
 import { parseInformedDeliveryTiles } from "@/lib/parser";
-import { runOcr } from "@/lib/ocr";
-import { interpretMailWithGemini, interpretMailWithGeminiVision, resetLlmCallCount } from "@/lib/llm";
+import { interpretMailWithGemini, resetLlmCallCount } from "@/lib/llm";
 import { createHash } from "crypto";
 import { eq, and } from "drizzle-orm";
 import { supabase } from "@/lib/supabase";
@@ -121,7 +120,6 @@ export async function GET(request: Request) {
         console.log(`[CRON]   ↳ Processing piece: ${sender?.slice(0, 40) || "(Unknown Provider)"}`);
 
         const imageBuffer = await loadMailImage(gmail, msgId, imgUrl);
-        let ocrResult: Awaited<ReturnType<typeof runOcr>> | null = null;
         let llmResult: Awaited<ReturnType<typeof interpretMailWithGemini>> | null = null;
         let finalStoragePath: string | null = null;
 
@@ -140,30 +138,15 @@ export async function GET(request: Request) {
         }
 
         if (imageBuffer && process.env.GOOGLE_API_KEY) {
-          const visionMode = process.env.LLM_VISION_MODE === "1";
-
-          if (visionMode) {
-            console.log("[CRON]     [Vision Mode] Analyzing image with Gemini...");
-            try {
-              llmResult = await interpretMailWithGeminiVision(imageBuffer);
-              if (llmResult.senderName && !sender) sender = llmResult.senderName;
-            } catch (err: any) {
-              console.log(`[CRON]     [Error] Gemini processing failed: ${err?.message || err}`);
-            }
-          } else {
-            try {
-              console.log("[CRON]     [OCR Mode] Running Tesseract OCR...");
-              ocrResult = await runOcr(imageBuffer);
-              try {
-                llmResult = await interpretMailWithGemini(ocrResult);
-                if (llmResult.senderName && !sender) sender = llmResult.senderName;
-              } catch (err: any) {
-                console.log(`[CRON]     [Error] Gemini processing failed: ${err?.message || err}`);
-              }
-            } catch (err: any) {
-              console.log(`[CRON]     [Error] OCR processing failed: ${err?.message || err}`);
-            }
+          console.log("[CRON]     [Vision Mode] Analyzing image with Gemini...");
+          try {
+            llmResult = await interpretMailWithGemini(imageBuffer);
+            if (llmResult.senderName && !sender) sender = llmResult.senderName;
+          } catch (err: any) {
+            console.log(`[CRON]     [Error] Gemini processing failed: ${err?.message || err}`);
           }
+        } else if (imageBuffer && !process.env.GOOGLE_API_KEY) {
+          console.log(`[CRON]     [Skipped] No GOOGLE_API_KEY found.`);
         }
 
         const exists = await db

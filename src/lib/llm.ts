@@ -9,7 +9,6 @@
 // changing the rest of the pipeline — just match MailInterpretation.
 
 import { GoogleGenAI } from "@google/genai";
-import type { OcrResult } from "./ocr";
 
 export interface MailInterpretation {
   senderName: string | null;
@@ -92,119 +91,6 @@ async function rateLimitedCall<T>(fn: () => Promise<T>): Promise<T> {
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 
-export async function interpretMailWithGemini(
-  ocr: OcrResult,
-  opts: LlmInterpretOptions = {}
-): Promise<MailInterpretation> {
-  if (!process.env.GOOGLE_API_KEY) {
-    throw new Error("Missing GOOGLE_API_KEY");
-  }
-
-  const model = opts.model ?? DEFAULT_MODEL;
-  const temperature = opts.temperature ?? DEFAULT_TEMP;
-
-  const prompt = `
-You are analyzing OCR text extracted from a physical US mail piece.
-
-Your job:
-1. Identify the sender name if possible. If unclear, set "senderName" to null.
-2. Identify the designated recipient name if possible. If unclear or "Current Resident", set it exactly as seen or null.
-3. Provide a confidence score (0.0–1.0) for your sender identification. Use 0 if senderName is null.
-4. Provide a free-form label "mailType" describing what kind of mail this is,
-   in natural language. Examples (just examples, you are NOT limited to these):
-   - "insurance solicitation"
-   - "credit card offer"
-   - "bank statement"
-   - "advertising flyer"
-   - "medical billing notice"
-   - "political advertisement"
-   - "personal mail"
-   - "unclear"
-5. Provide a short one–two sentence human-friendly summary.
-6. Decide if this mail is important to a typical recipient.
-7. Explain in plain English why or why not.
-
-STRICT FORMAT RULES:
-- Respond with ONLY a single JSON object, no extra text, no markdown.
-- JSON must match this exact shape:
-
-{
-  "senderName": string | null,
-  "recipientName": string | null,
-  "confidence": number,
-  "mailType": string,
-  "shortSummary": string,
-  "isImportant": boolean,
-  "importanceReason": string
-}
-
-- Do NOT add any other fields.
-- Do NOT include double quote (") characters inside string values. If you need quotes, use single quotes (').
-- Keep "shortSummary" under 200 characters.
-- Keep "importanceReason" under 200 characters.
-- Do not include line breaks inside any string values.
-
-Here is the OCR result as JSON:
-
-${JSON.stringify(ocr, null, 2)}
-`.trim();
-
-  const response = await rateLimitedCall(() =>
-    ai.models.generateContent({
-      model,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature, maxOutputTokens: 1000 },
-    })
-  );
-
-  const text = response.text?.trim();
-
-  if (!text) {
-    console.error("Gemini returned no text");
-    return {
-      senderName: null,
-      recipientName: null,
-      confidence: 0,
-      mailType: "unknown",
-      shortSummary: "LLM returned no analysis for this mail piece.",
-      isImportant: false,
-      importanceReason: "No LLM output was returned.",
-      rawJson: null,
-    };
-  }
-
-  const json = safeParseJSON(text);
-
-  if (!json || typeof json !== "object") {
-    console.error("Gemini JSON parse failed, falling back to generic interpretation");
-    return {
-      senderName: null,
-      recipientName: null,
-      confidence: 0,
-      mailType: "unknown",
-      shortSummary: "LLM could not reliably interpret this mail piece.",
-      isImportant: false,
-      importanceReason: "Failed to parse LLM JSON response.",
-      rawJson: json,
-    };
-  }
-
-  const rawConfidence = typeof json.confidence === "number" ? json.confidence : 0;
-  // Clamp to [0, 1]
-  const confidence = Math.max(0, Math.min(1, rawConfidence));
-
-  return {
-    senderName: json.senderName ?? null,
-    recipientName: json.recipientName ?? null,
-    confidence,
-    mailType: String(json.mailType ?? "unknown"),
-    shortSummary: String(json.shortSummary ?? ""),
-    isImportant: Boolean(json.isImportant),
-    importanceReason: String(json.importanceReason ?? ""),
-    rawJson: json,
-  };
-}
-
 function safeParseJSON(str: string): any | null {
   let cleaned = str.trim();
 
@@ -232,11 +118,10 @@ function safeParseJSON(str: string): any | null {
 }
 
 /**
- * Vision path: send the raw image directly to Gemini without running OCR first.
- * Enabled when LLM_VISION_MODE=1 in the environment.
- * Returns the same MailInterpretation shape as interpretMailWithGemini.
+ * Vision path: send the raw image directly to Gemini.
+ * Returns exactly the MailInterpretation shape.
  */
-export async function interpretMailWithGeminiVision(
+export async function interpretMailWithGemini(
   imageBuffer: Buffer,
   opts: LlmInterpretOptions = {}
 ): Promise<MailInterpretation> {
