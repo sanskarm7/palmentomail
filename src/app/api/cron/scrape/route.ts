@@ -17,7 +17,7 @@ import { google } from "googleapis";
 export const maxDuration = 60;
 
 const DEFAULT_QUERY =
-  'from:USPSInformeddelivery@email.informeddelivery.usps.com subject:"Daily Digest" newer_than:3d';
+  'from:USPSInformeddelivery@email.informeddelivery.usps.com subject:"Daily Digest" newer_than:30d';
 
 export async function GET(request: Request) {
   // Validate secure CRON invocation
@@ -67,10 +67,9 @@ export async function GET(request: Request) {
 
     console.log("[CRON] Searching master Gmail...");
     const allMessages = await listDigestMessages(gmail, query);
-    const maxMessages = parseInt(process.env.GMAIL_MAX_MESSAGES ?? "5", 10);
-    const list = allMessages.slice(0, isNaN(maxMessages) ? 5 : maxMessages);
+    const list = allMessages;
     
-    console.log(`[CRON] Found ${allMessages.length} messages. Processing max ${list.length}.`);
+    console.log(`[CRON] Found ${allMessages.length} messages. Processing all uncached instances.`);
 
     resetLlmCallCount();
     let inserted = 0;

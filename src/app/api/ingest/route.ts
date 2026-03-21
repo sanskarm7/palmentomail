@@ -15,7 +15,7 @@ import { eq, and } from "drizzle-orm";
 import { supabase } from "@/lib/supabase";
 
 const DEFAULT_QUERY =
-  'from:USPSInformeddelivery@email.informeddelivery.usps.com subject:"Daily Digest" newer_than:60d';
+  'from:USPSInformeddelivery@email.informeddelivery.usps.com subject:"Daily Digest" newer_than:30d';
 
 export const maxDuration = 60;
 
@@ -52,9 +52,8 @@ export async function GET() {
 
         sendLog(`Searching Gmail...`);
         const allMessages = await listDigestMessages(gmail, query);
-        const maxMessages = parseInt(process.env.GMAIL_MAX_MESSAGES ?? "5", 10);
-        const list = allMessages.slice(0, isNaN(maxMessages) ? 5 : maxMessages);
-        sendLog(`Found ${allMessages.length} messages. Processing maximum of ${list.length}.`);
+        const list = allMessages;
+        sendLog(`Found ${allMessages.length} messages. Processing all uncached instances.`);
 
         resetLlmCallCount();
         let inserted = 0;
