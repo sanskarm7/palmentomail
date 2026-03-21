@@ -168,7 +168,7 @@ export async function GET(request: Request) {
             llmConfidence: llmResult ? Math.round(llmResult.confidence * 100) : null,
             llmMailType: llmResult?.mailType ?? null,
             llmSummary: llmResult?.shortSummary ?? null,
-            llmIsImportant: llmResult?.isImportant ? 1 : null,
+            llmIsImportant: llmResult?.isImportant ? 1 : 0,
             llmImportanceReason: llmResult?.importanceReason ?? null,
             llmRawJson: llmResult?.rawJson ? JSON.stringify(llmResult.rawJson) : null,
           });
