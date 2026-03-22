@@ -48,7 +48,7 @@ export async function sendRecipientNotification(
       <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 32px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
         <h2 style="color: #111827; margin-top: 0; font-family: sans-serif;">📬 You've got mail, ${recipientName}!</h2>
         <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px; font-family: sans-serif;">
-          USPS Informed Delivery just scanned <strong>${newPieces.length}</strong> new piece(s) of physical mail officially addressed to you.
+          palmentomail just scanned <strong>${newPieces.length}</strong> new piece(s) of physical mail officially addressed to you.
         </p>
         
         ${pieceHtml}
@@ -63,7 +63,7 @@ export async function sendRecipientNotification(
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'MailOps Updates <onboarding@resend.dev>', // Resend Testing Root Domain! Change this once domain is organically verified.
+      from: 'Palmento Mail <updates@palmentomail.com>',
       to: alertEmail,
       subject: `📬 ${newPieces.length} New Mail Piece${newPieces.length > 1 ? 's' : ''} for ${recipientName}`,
       html: htmlBody,
