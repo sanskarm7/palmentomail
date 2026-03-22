@@ -38,7 +38,7 @@ export default function Home() {
   const stats = useMemo(() => {
     const uniqueMap = new Map<string, { name: string; count: number; pinned: boolean }>();
     
-    // 1. Pre-register pinned inbox names from the environment wrapper
+    // Pre-register pinned inbox names from the environment wrapper
     let pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
     pinnedEnv = pinnedEnv.replace(/"/g, ""); // Strip any Webpack/Next.js escaped literal quotes
     if (pinnedEnv) {
@@ -52,7 +52,7 @@ export default function Home() {
 
     let unnamedCount = 0;
 
-    // 2. Tally existing mail piece distributions
+    // Tally existing mail piece distributions
     items.forEach(it => {
       const raw = it.llmRecipientName?.trim() || "";
       const lower = raw.toLowerCase();
@@ -66,7 +66,7 @@ export default function Home() {
       }
     });
 
-    // 3. Sort logic: Pinned inboxes stay exactly in their .env.local declaration order, followed by guests sorted by volume descending
+    // Sort logic: Pinned inboxes stay exactly in their .env.local declaration order, followed by guests sorted by volume descending
     const envOrder = pinnedEnv.split(",").map(n => n.trim().toLowerCase());
     
     return Array.from(uniqueMap.values()).sort((a, b) => {
@@ -146,7 +146,7 @@ export default function Home() {
                 if (data.type === 'log') {
                   setIngestLogs(prev => [...prev, data.message]);
                 } else if (data.type === 'error') {
-                  setIngestLogs(prev => [...prev, `❌ Error: ${data.error}`]);
+                  setIngestLogs(prev => [...prev, ` Error: ${data.error}`]);
                 }
               } catch (e) { }
             }
@@ -154,7 +154,7 @@ export default function Home() {
         }
       }
     } catch (e) {
-      setIngestLogs(prev => [...prev, `❌ Network connection failed.`]);
+      setIngestLogs(prev => [...prev, ` Network connection failed.`]);
     }
 
     setLoading(false);

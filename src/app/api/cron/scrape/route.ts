@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1. Fetch the master refresh token from Supabase
+    // Fetch the master refresh token from Supabase
     const tokenRecord = await db
       .select({ value: appConfig.value })
       .from(appConfig)
@@ -44,14 +44,14 @@ export async function GET(request: Request) {
 
     const refreshToken = tokenRecord[0].value;
 
-    // 2. Fetch the master User ID to associate the mail against 
+    // Fetch the master User ID to associate the mail against 
     const userRecord = await db.select({ id: users.id }).from(users).limit(1);
     if (userRecord.length === 0) {
       return NextResponse.json({ error: "No primary user account found" }, { status: 400 });
     }
     const userId = userRecord[0].id;
 
-    // 3. Generate a fresh temporary Google Access Token
+    // Generate a fresh temporary Google Access Token
     const oauth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       
     const canonicalNames = recipientRecords.map(r => r.name as string);
     
-    // 2. Pre-seed the fuzzy matcher with the static GUI pinned inboxes so they always act as anchor buckets
+    // Pre-seed the fuzzy matcher with the static GUI pinned inboxes so they always act as anchor buckets
     const pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
     if (pinnedEnv) {
       pinnedEnv.split(",").forEach(name => {
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
     let inserted = 0;
     const newlyInsertedPieces: NotificationItem[] = [];
 
-    // 4. Run the core ingestion pipeline
+    // Run the core ingestion pipeline
     for (const [index, msg] of list.entries()) {
       const msgId = msg.id;
       if (!msgId) continue;
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
         .limit(1);
 
       if (existingEmail.length > 0) {
-        console.log(`[CRON] → Skipped duplicate email (${msgId})`);
+        console.log(`[CRON]  Skipped duplicate email (${msgId})`);
         continue;
       }
 
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
       if (!html) continue;
 
       const tiles = parseInformedDeliveryTiles(html);
-      console.log(`[CRON] → Found ${tiles.length} mail piece(s) inside.`);
+      console.log(`[CRON]  Found ${tiles.length} mail piece(s) inside.`);
 
       const emailDeliveryDate = tiles[0]?.deliveryDate || "";
 
@@ -128,7 +128,7 @@ export async function GET(request: Request) {
           deliveryDate: emailDeliveryDate,
         });
       } catch (err: any) {
-        console.log(`[CRON] → Failed to log email to DB: ${err?.message || err}`);
+        console.log(`[CRON]  Failed to log email to DB: ${err?.message || err}`);
         continue;
       }
 
@@ -144,12 +144,12 @@ export async function GET(request: Request) {
           .limit(1);
 
         if (exists.length > 0) {
-          console.log("    ✓ Ignored duplicate piece (already in DB).");
+          console.log("Ignored duplicate piece (already in DB).");
           continue;
         }
 
         let sender = tile.senderGuess;
-        console.log(`[CRON]   ↳ Processing piece: ${sender?.slice(0, 40) || "(Unknown Provider)"}`);
+        console.log(`[CRON]    Processing piece: ${sender?.slice(0, 40) || "(Unknown Provider)"}`);
 
         const imageBuffer = await loadMailImage(gmail, msgId, imgUrl);
         let llmResult: Awaited<ReturnType<typeof interpretMailWithGemini>> | null = null;
@@ -208,7 +208,7 @@ export async function GET(request: Request) {
           });
 
           inserted++;
-          console.log("[CRON]     ✓ Saved piece to DB.");
+          console.log("[CRON]      Saved piece to DB.");
           
           newlyInsertedPieces.push({
             llmRecipientName: llmResult?.recipientName ?? null,

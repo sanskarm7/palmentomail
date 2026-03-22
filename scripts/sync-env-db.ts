@@ -7,7 +7,7 @@ async function main() {
   const { findCanonicalName } = await import("../src/lib/name-matcher");
   const { eq } = await import("drizzle-orm");
 
-  console.log("⚠️ Synchronizing Postgres Database to the new .env.local canonical names...");
+  console.log("Synchronizing Postgres Database to the new .env.local canonical names...");
 
   const pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
   const envNames = pinnedEnv.split(",").map(n => n.trim()).filter(Boolean);
@@ -15,25 +15,25 @@ async function main() {
   console.log(`-> Loaded ${envNames.length} Master Rules from .env.local:`, envNames);
 
   if (envNames.length === 0) {
-    console.log("❌ No names found in NEXT_PUBLIC_PINNED_RECIPIENTS! Check your .env.local file.");
+    console.log("No names found in NEXT_PUBLIC_PINNED_RECIPIENTS! Check your .env.local file.");
     process.exit(1);
   }
 
   try {
-    // 1. Sync the Notification Email Routing Table
+    // Sync the Notification Email Routing Table
     const notifications = await db.select().from(recipientNotifications);
     for (const rule of notifications) {
       const newCanonical = findCanonicalName(rule.recipientName, envNames);
       if (newCanonical !== rule.recipientName) {
-         console.log(`   [Webhook Rule] Migrating mapping target '${rule.recipientName}' -> '${newCanonical}'`);
+         console.log(`[Webhook Rule] Migrating mapping target '${rule.recipientName}' -> '${newCanonical}'`);
          await db.update(recipientNotifications)
            .set({ recipientName: newCanonical })
            .where(eq(recipientNotifications.id, rule.id));
       }
     }
 
-    // 2. Sync all Historical Mail Pieces
-    console.log(`-> Sweeping Postgres history to re-align orphaned mail piece identifiers...`);
+    // Sync all Historical Mail Pieces
+    console.log(`Sweeping Postgres history to re-align orphaned mail piece identifiers...`);
     const allPieces = await db.select().from(mailPieces);
     let updatedPieces = 0;
     
@@ -42,7 +42,7 @@ async function main() {
       const newName = findCanonicalName(p.llmRecipientName, envNames);
       
       if (newName !== p.llmRecipientName) {
-        console.log(`   [Inbox Sweep] Re-assigning Mail ID ${p.id}: '${p.llmRecipientName}' -> '${newName}'`);
+        console.log(`[Inbox Sweep] Re-assigning Mail ID ${p.id}: '${p.llmRecipientName}' -> '${newName}'`);
         await db.update(mailPieces)
           .set({ llmRecipientName: newName })
           .where(eq(mailPieces.id, p.id));
@@ -50,8 +50,8 @@ async function main() {
       }
     }
 
-    console.log(`\n✅ Global .env.local synchronization flawlessly completed!`);
-    console.log(`   Merged ${updatedPieces} old mail piece(s) and aligned UI hooks completely.`);
+    console.log(`\n Global .env.local synchronization flawlessly completed!`);
+    console.log(`Merged ${updatedPieces} old mail piece(s) and aligned UI hooks completely.`);
   } catch (err: any) {
     console.error("ERROR: Failed to run synchronization:", err?.message || err);
   } finally {

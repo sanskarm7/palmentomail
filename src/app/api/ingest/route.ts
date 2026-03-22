@@ -65,7 +65,7 @@ export async function GET() {
           
         const canonicalNames = recipientRecords.map(r => r.name as string);
         
-        // 2. Pre-seed the fuzzy matcher with the static GUI pinned inboxes so they always act as anchor buckets
+        // Pre-seed the fuzzy matcher with the static GUI pinned inboxes so they always act as anchor buckets
         const pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
         if (pinnedEnv) {
           pinnedEnv.split(",").forEach(name => {
@@ -91,7 +91,7 @@ export async function GET() {
             .limit(1);
 
           if (existingEmail.length > 0) {
-            sendLog(`→ Skipped duplicate email (${msgId})`);
+            sendLog(`Skipped duplicate email (${msgId})`);
             continue;
           }
 
@@ -99,12 +99,12 @@ export async function GET() {
 
           const html = await getMessageHtml(gmail, msgId);
           if (!html) {
-            sendLog("→ No HTML found in email.");
+            sendLog("No HTML found in email.");
             continue;
           }
 
           const tiles = parseInformedDeliveryTiles(html);
-          sendLog(`→ Found ${tiles.length} mail piece(s) inside.`);
+          sendLog(`Found ${tiles.length} mail piece(s) inside.`);
 
           if (index === 0 && process.env.SAVE_DEBUG_EMAIL_HTML === "1") {
             const fs = await import("fs/promises");
@@ -120,7 +120,7 @@ export async function GET() {
               deliveryDate: emailDeliveryDate,
             });
           } catch (err: any) {
-            sendLog(`→ Failed to log email to DB: ${err?.message || err}`);
+            sendLog(`Failed to log email to DB: ${err?.message || err}`);
             continue;
           }
 
@@ -138,19 +138,19 @@ export async function GET() {
               .limit(1);
 
             if (exists.length > 0) {
-              sendLog("    ✓ Ignored duplicate piece (already in DB).");
+              sendLog("Ignored duplicate piece (already in DB).");
               continue;
             }
 
             let sender = tile.senderGuess;
-            sendLog(`  ↳ Processing piece: ${sender?.slice(0, 40) || "(Unknown Provider)"}`);
+            sendLog(`Processing piece: ${sender?.slice(0, 40) || "(Unknown Provider)"}`);
 
             const imageBuffer = await loadMailImage(gmail, msgId, imgUrl);
             let llmResult: Awaited<ReturnType<typeof interpretMailWithGemini>> | null = null;
             let finalStoragePath: string | null = null;
 
             if (imageBuffer) {
-              sendLog("    [Storage] Uploading crop to Supabase...");
+              sendLog("[Storage] Uploading crop to Supabase...");
               const storagePath = `${userId}/${msgId}/${hash}.jpg`;
               const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('mail-images')
@@ -160,18 +160,18 @@ export async function GET() {
                 });
 
                if (uploadError) {
-                 sendLog(`    [Error] Supabase Upload failed: ${uploadError.message}`);
+                 sendLog(`[Error] Supabase Upload failed: ${uploadError.message}`);
                } else {
                  finalStoragePath = uploadData?.path ?? storagePath;
-                 sendLog(`    [Storage] Image securely uploaded!`);
+                 sendLog(`[Storage] Image securely uploaded!`);
                }
             }
 
             if (imageBuffer && process.env.GOOGLE_API_KEY) {
-              sendLog("    [Vision Mode] Analyzing image with Gemini...");
+              sendLog("[Vision Mode] Analyzing image with Gemini...");
               try {
                 llmResult = await interpretMailWithGemini(imageBuffer);
-                sendLog(`    [Result] Assessed as: ${llmResult.senderName || "Unknown Sender"} (${llmResult.mailType})`);
+                sendLog(`[Result] Assessed as: ${llmResult.senderName || "Unknown Sender"} (${llmResult.mailType})`);
                 if (llmResult.senderName && !sender) sender = llmResult.senderName;
                 
                 // Fuzzy Match Recipient Name Grouping
@@ -183,10 +183,10 @@ export async function GET() {
                   }
                 }
               } catch (err: any) {
-                sendLog(`    [Error] Gemini processing failed: ${err?.message || err}`);
+                sendLog(`[Error] Gemini processing failed: ${err?.message || err}`);
               }
             } else if (imageBuffer && !process.env.GOOGLE_API_KEY) {
-              sendLog("    [Skipped] No GOOGLE_API_KEY found.");
+              sendLog("[Skipped] No GOOGLE_API_KEY found.");
             }
 
             try {
@@ -217,9 +217,9 @@ export async function GET() {
               });
 
               inserted++;
-              sendLog("    ✓ Saved piece to DB.");
+              sendLog("Saved piece to DB.");
             } catch (err: any) {
-              sendLog(`    [Error] DB insertion failed: ${err?.message || err}`);
+              sendLog(`[Error] DB insertion failed: ${err?.message || err}`);
             }
           }
         }
@@ -288,7 +288,7 @@ async function loadMailImage(
     try {
       return await getImageByCid(gmail, messageId, imgUrl);
     } catch (err: any) {
-      console.log(`      Failed to extract CID image: ${err?.message || err}`);
+      console.log(`Failed to extract CID image: ${err?.message || err}`);
       return null;
     }
   }
@@ -297,13 +297,13 @@ async function loadMailImage(
     try {
       const response = await fetch(imgUrl);
       if (!response.ok) {
-        console.log(`      Failed to download image: HTTP ${response.status}`);
+        console.log(`Failed to download image: HTTP ${response.status}`);
         return null;
       }
       const arrayBuffer = await response.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } catch (err: any) {
-      console.log(`      Failed to download remote image: ${err?.message || err}`);
+      console.log(`Failed to download remote image: ${err?.message || err}`);
       return null;
     }
   }

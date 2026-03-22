@@ -76,7 +76,7 @@ export function findCanonicalName(rawName: string, existingNames: string[]): str
       return existing;
     }
 
-    // 2. Tokenized Word Intersection (solves "Leo Wu-Hacohen" vs "Leo Song Wu-Hacohen")
+    // Tokenized Word Intersection (solves "Leo Wu-Hacohen" vs "Leo Song Wu-Hacohen")
     const wordsRaw = cleanedRaw.split(" ").filter(Boolean);
     const wordsExisting = cleanedExisting.split(" ").filter(Boolean);
     

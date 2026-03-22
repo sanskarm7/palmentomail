@@ -65,7 +65,7 @@ export async function sendRecipientNotification(
     const { data, error } = await resend.emails.send({
       from: 'Palmento Mail <updates@palmentomail.com>',
       to: alertEmail,
-      subject: `📬 ${newPieces.length} New Mail Piece${newPieces.length > 1 ? 's' : ''} for ${recipientName}`,
+      subject: ` ${newPieces.length} New Mail Piece${newPieces.length > 1 ? 's' : ''} for ${recipientName}`,
       html: htmlBody,
     });
 
