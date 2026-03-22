@@ -131,6 +131,17 @@ export async function GET() {
               .update(imgUrl + "|" + deliveryDate)
               .digest("hex");
 
+            const exists = await db
+              .select({ id: mailPieces.id })
+              .from(mailPieces)
+              .where(and(eq(mailPieces.imgHash, hash), eq(mailPieces.userId, userId)))
+              .limit(1);
+
+            if (exists.length > 0) {
+              sendLog("    ✓ Ignored duplicate piece (already in DB).");
+              continue;
+            }
+
             let sender = tile.senderGuess;
             sendLog(`  ↳ Processing piece: ${sender?.slice(0, 40) || "(Unknown Provider)"}`);
 
@@ -176,17 +187,6 @@ export async function GET() {
               }
             } else if (imageBuffer && !process.env.GOOGLE_API_KEY) {
               sendLog("    [Skipped] No GOOGLE_API_KEY found.");
-            }
-
-            const exists = await db
-              .select({ id: mailPieces.id })
-              .from(mailPieces)
-              .where(and(eq(mailPieces.imgHash, hash), eq(mailPieces.userId, userId)))
-              .limit(1);
-
-            if (exists.length > 0) {
-              sendLog("    ✓ Ignored duplicate piece (already in DB).");
-              continue;
             }
 
             try {
