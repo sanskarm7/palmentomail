@@ -7,13 +7,14 @@ import {
   getImageByCid,
 } from "@/lib/gmail";
 import { db } from "@/db/client";
-import { emails, mailPieces } from "@/db/schema";
+import { emails, mailPieces, recipientNotifications } from "@/db/schema";
 import { parseInformedDeliveryTiles } from "@/lib/parser";
 import { interpretMailWithGemini, resetLlmCallCount } from "@/lib/llm";
 import { createHash } from "crypto";
-import { eq, and, isNotNull } from "drizzle-orm";
+import { eq, and, isNotNull, inArray } from "drizzle-orm";
 import { findCanonicalName } from "@/lib/name-matcher";
 import { supabase } from "@/lib/supabase";
+import { sendRecipientNotification, NotificationItem } from "@/lib/email";
 
 const DEFAULT_QUERY =
   'from:USPSInformeddelivery@email.informeddelivery.usps.com subject:"Daily Digest" newer_than:30d';
@@ -77,6 +78,7 @@ export async function GET() {
 
         resetLlmCallCount();
         let inserted = 0;
+        const newlyInsertedPieces: NotificationItem[] = [];
 
         for (const [index, msg] of list.entries()) {
           const msgId = msg.id;
@@ -204,10 +206,47 @@ export async function GET() {
                 llmRawJson: llmResult?.rawJson ? JSON.stringify(llmResult.rawJson) : null,
               });
 
+              newlyInsertedPieces.push({
+                llmRecipientName: llmResult?.recipientName ?? null,
+                llmSenderName: llmResult?.senderName ?? null,
+                rawSenderText: sender ?? null,
+                llmMailType: llmResult?.mailType ?? null,
+                llmSummary: llmResult?.shortSummary ?? null,
+                llmIsImportant: llmResult?.isImportant ? 1 : 0,
+                imgStoragePath: finalStoragePath
+              });
+
               inserted++;
               sendLog("    ✓ Saved piece to DB.");
             } catch (err: any) {
               sendLog(`    [Error] DB insertion failed: ${err?.message || err}`);
+            }
+          }
+        }
+
+        if (newlyInsertedPieces.length > 0) {
+          sendLog(`\n[Email] Sorting ${newlyInsertedPieces.length} new piece(s) into recipient buckets...`);
+          
+          const groupedPieces = newlyInsertedPieces.reduce((acc, piece) => {
+            const name = piece.llmRecipientName;
+            if (name && name.toLowerCase() !== "current resident" && name.toLowerCase() !== "null") {
+              if (!acc[name]) acc[name] = [];
+              acc[name].push(piece);
+            }
+            return acc;
+          }, {} as Record<string, NotificationItem[]>);
+
+          const activeRecipients = Object.keys(groupedPieces);
+          if (activeRecipients.length > 0) {
+            const notifications = await db.select()
+              .from(recipientNotifications)
+              .where(inArray(recipientNotifications.recipientName, activeRecipients));
+              
+            for (const rule of notifications) {
+              if (groupedPieces[rule.recipientName]) {
+                sendLog(`[Email] Dispatching Resend alert securely to ${rule.recipientName}...`);
+                await sendRecipientNotification(rule.recipientName, rule.alertEmail, groupedPieces[rule.recipientName]);
+              }
             }
           }
         }

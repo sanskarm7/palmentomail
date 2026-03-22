@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { emails, mailPieces, appConfig, users } from "@/db/schema";
+import { emails, mailPieces, appConfig, users, recipientNotifications } from "@/db/schema";
 import {
   getGmailClient,
   listDigestMessages,
@@ -10,10 +10,11 @@ import {
 import { parseInformedDeliveryTiles } from "@/lib/parser";
 import { interpretMailWithGemini, resetLlmCallCount } from "@/lib/llm";
 import { createHash } from "crypto";
-import { eq, and, isNotNull } from "drizzle-orm";
+import { eq, and, isNotNull, inArray } from "drizzle-orm";
 import { findCanonicalName } from "@/lib/name-matcher";
 import { supabase } from "@/lib/supabase";
 import { google } from "googleapis";
+import { sendRecipientNotification, NotificationItem } from "@/lib/email";
 
 export const maxDuration = 60;
 
@@ -93,6 +94,7 @@ export async function GET(request: Request) {
 
     resetLlmCallCount();
     let inserted = 0;
+    const newlyInsertedPieces: NotificationItem[] = [];
 
     // 4. Run the core ingestion pipeline
     for (const [index, msg] of list.entries()) {
@@ -204,8 +206,45 @@ export async function GET(request: Request) {
 
           inserted++;
           console.log("[CRON]     ✓ Saved piece to DB.");
+          
+          newlyInsertedPieces.push({
+            llmRecipientName: llmResult?.recipientName ?? null,
+            llmSenderName: llmResult?.senderName ?? null,
+            rawSenderText: sender ?? null,
+            llmMailType: llmResult?.mailType ?? null,
+            llmSummary: llmResult?.shortSummary ?? null,
+            llmIsImportant: llmResult?.isImportant ? 1 : 0,
+            imgStoragePath: finalStoragePath
+          });
         } catch (err: any) {
           console.log(`[CRON]     [Error] DB insertion failed: ${err?.message || err}`);
+        }
+      }
+    }
+
+    if (newlyInsertedPieces.length > 0) {
+      console.log(`\n[CRON] Sorting ${newlyInsertedPieces.length} new piece(s) into recipient buckets...`);
+      
+      const groupedPieces = newlyInsertedPieces.reduce((acc, piece) => {
+        const name = piece.llmRecipientName;
+        if (name && name.toLowerCase() !== "current resident" && name.toLowerCase() !== "null") {
+          if (!acc[name]) acc[name] = [];
+          acc[name].push(piece);
+        }
+        return acc;
+      }, {} as Record<string, NotificationItem[]>);
+
+      const activeRecipients = Object.keys(groupedPieces);
+      if (activeRecipients.length > 0) {
+        const notifications = await db.select()
+          .from(recipientNotifications)
+          .where(inArray(recipientNotifications.recipientName, activeRecipients));
+          
+        for (const rule of notifications) {
+          if (groupedPieces[rule.recipientName]) {
+            console.log(`[CRON] Dispatching Resend alert securely to ${rule.recipientName}...`);
+            await sendRecipientNotification(rule.recipientName, rule.alertEmail, groupedPieces[rule.recipientName]);
+          }
         }
       }
     }

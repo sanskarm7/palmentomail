@@ -50,8 +50,15 @@ export const mailPieces = pgTable("mail_pieces", {
 
 export const appConfig = pgTable("app_config", {
   id: varchar("id", { length: 255 }).primaryKey(), // e.g. 'google_refresh_token'
-  value: text("value").notNull(),
+  value: text("value"),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const recipientNotifications = pgTable("recipient_notifications", {
+  id: serial("id").primaryKey(),
+  recipientName: varchar("recipient_name", { length: 255 }).unique().notNull(), // Exact matches active pinned UI titles
+  alertEmail: varchar("alert_email", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const accessCodes = pgTable("access_codes", {
