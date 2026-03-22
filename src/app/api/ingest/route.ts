@@ -243,6 +243,12 @@ export async function GET() {
               .where(inArray(recipientNotifications.recipientName, activeRecipients));
               
             for (const rule of notifications) {
+              // TEMPORARY RATE LIMIT TESTING ESCAPE HATCH
+              if (rule.recipientName !== "Justin Siek") {
+                sendLog(`[Email] Skipping disabled testing alert for ${rule.recipientName}...`);
+                continue;
+              }
+
               if (groupedPieces[rule.recipientName]) {
                 sendLog(`[Email] Dispatching Resend alert securely to ${rule.recipientName}...`);
                 await sendRecipientNotification(rule.recipientName, rule.alertEmail, groupedPieces[rule.recipientName]);
