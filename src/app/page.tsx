@@ -36,9 +36,22 @@ export default function Home() {
   const [guestError, setGuestError] = useState("");
 
   const stats = useMemo(() => {
-    const uniqueMap = new Map<string, { name: string; count: number }>();
+    const uniqueMap = new Map<string, { name: string; count: number; pinned: boolean }>();
+    
+    // 1. Pre-register pinned inbox names from the environment wrapper
+    const pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
+    if (pinnedEnv) {
+      pinnedEnv.split(",").forEach(name => {
+        const trimmed = name.trim();
+        if (trimmed) {
+          uniqueMap.set(trimmed.toLowerCase(), { name: trimmed, count: 0, pinned: true });
+        }
+      });
+    }
+
     let unnamedCount = 0;
 
+    // 2. Tally existing mail piece distributions
     items.forEach(it => {
       const raw = it.llmRecipientName?.trim() || "";
       const lower = raw.toLowerCase();
@@ -46,13 +59,18 @@ export default function Home() {
         unnamedCount++;
       } else {
         if (!uniqueMap.has(lower)) {
-          uniqueMap.set(lower, { name: raw, count: 0 });
+          uniqueMap.set(lower, { name: raw, count: 0, pinned: false });
         }
         uniqueMap.get(lower)!.count++;
       }
     });
 
-    return Array.from(uniqueMap.values()).sort((a, b) => b.count - a.count);
+    // 3. Sort logic: Pinned inboxes stay at the top natively, followed by volume bounds
+    return Array.from(uniqueMap.values()).sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return b.count - a.count;
+    });
   }, [items]);
 
   const filteredItems = useMemo(() => {
