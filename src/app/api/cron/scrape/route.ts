@@ -10,7 +10,8 @@ import {
 import { parseInformedDeliveryTiles } from "@/lib/parser";
 import { interpretMailWithGemini, resetLlmCallCount } from "@/lib/llm";
 import { createHash } from "crypto";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNotNull } from "drizzle-orm";
+import { findCanonicalName } from "@/lib/name-matcher";
 import { supabase } from "@/lib/supabase";
 import { google } from "googleapis";
 
@@ -70,6 +71,14 @@ export async function GET(request: Request) {
     const list = allMessages;
     
     console.log(`[CRON] Found ${allMessages.length} messages. Processing all uncached instances.`);
+
+    // Gather existing recipient names for fuzzy matching deduplication
+    const recipientRecords = await db
+      .selectDistinct({ name: mailPieces.llmRecipientName })
+      .from(mailPieces)
+      .where(and(eq(mailPieces.userId, userId), isNotNull(mailPieces.llmRecipientName)));
+      
+    const canonicalNames = recipientRecords.map(r => r.name as string);
 
     resetLlmCallCount();
     let inserted = 0;
@@ -141,6 +150,15 @@ export async function GET(request: Request) {
           try {
             llmResult = await interpretMailWithGemini(imageBuffer);
             if (llmResult.senderName && !sender) sender = llmResult.senderName;
+            
+            // Fuzzy Match Recipient Name Grouping
+            if (llmResult.recipientName) {
+              const groupedName = findCanonicalName(llmResult.recipientName, canonicalNames);
+              llmResult.recipientName = groupedName;
+              if (!canonicalNames.includes(groupedName)) {
+                canonicalNames.push(groupedName);
+              }
+            }
           } catch (err: any) {
             console.log(`[CRON]     [Error] Gemini processing failed: ${err?.message || err}`);
           }
