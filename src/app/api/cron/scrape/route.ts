@@ -79,6 +79,17 @@ export async function GET(request: Request) {
       .where(and(eq(mailPieces.userId, userId), isNotNull(mailPieces.llmRecipientName)));
       
     const canonicalNames = recipientRecords.map(r => r.name as string);
+    
+    // 2. Pre-seed the fuzzy matcher with the static GUI pinned inboxes so they always act as anchor buckets
+    const pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
+    if (pinnedEnv) {
+      pinnedEnv.split(",").forEach(name => {
+        const trimmed = name.trim();
+        if (trimmed && !canonicalNames.includes(trimmed)) {
+          canonicalNames.push(trimmed);
+        }
+      });
+    }
 
     resetLlmCallCount();
     let inserted = 0;
