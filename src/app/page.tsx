@@ -37,7 +37,7 @@ export default function Home() {
 
   const stats = useMemo(() => {
     const uniqueMap = new Map<string, { name: string; count: number; pinned: boolean }>();
-    
+
     // Pre-register pinned inbox names from the environment wrapper
     let pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
     pinnedEnv = pinnedEnv.replace(/"/g, ""); // Strip any Webpack/Next.js escaped literal quotes
@@ -68,17 +68,17 @@ export default function Home() {
 
     // Sort logic: Pinned inboxes stay exactly in their .env.local declaration order, followed by guests sorted by volume descending
     const envOrder = pinnedEnv.split(",").map(n => n.trim().toLowerCase());
-    
+
     return Array.from(uniqueMap.values()).sort((a, b) => {
       // Pinned vs Non-Pinned
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
-      
+
       // Both Pinned: Enforce static environment declaration order
       if (a.pinned && b.pinned) {
         return envOrder.indexOf(a.name.toLowerCase()) - envOrder.indexOf(b.name.toLowerCase());
       }
-      
+
       // Both Non-Pinned: Sort by raw mail count descending
       return b.count - a.count;
     });
@@ -191,37 +191,70 @@ export default function Home() {
 
   if (!session && !isGuest) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#15263a]">
-        <div className="mb-8 flex items-center gap-4">
-          <Image src="/palmentomail_logo.png" alt="palmentomail Logo" width={80} height={80} className="rounded-2xl shadow-xl" />
-          <h1 className="text-6xl font-extrabold text-white tracking-tight">palmentomail</h1>
-        </div>
-        <p className="mb-10 text-blue-200 text-lg tracking-wide font-light">Intelligent USPS Physical Mail Processing</p>
+      <div className="h-screen w-full flex items-center justify-center relative bg-[#020617] overflow-hidden selection:bg-blue-500/30 font-sans">
+        {/* Ambient Background Elements */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f12_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f12_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-blue-500 opacity-20 blur-[100px]"></div>
+        <div className="absolute left-0 right-0 bottom-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-indigo-500 opacity-10 blur-[100px]"></div>
 
-        <button
-          onClick={() => signIn('google')}
-          className="px-8 py-3.5 rounded-full bg-white text-[#15263a] font-bold text-lg hover:bg-gray-100 shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform hover:scale-105 active:scale-95 flex items-center gap-3"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-          Sign in with Google
-        </button>
+        {/* Main Card */}
+        <div className="relative z-10 flex flex-col items-center w-full max-w-[420px] mx-4 p-8 sm:p-10 bg-[#0B1221]/60 border border-white/10 rounded-[2rem] shadow-[0_0_80px_-20px_rgba(0,0,0,0.7)] backdrop-blur-xl">
 
-        <div className="mt-10 pt-8 border-t border-white/10 w-full max-w-xs flex flex-col items-center gap-3">
-          <input
-            type="text"
-            placeholder="Enter Guest Code"
-            value={guestCode}
-            onChange={(e) => setGuestCode(e.target.value.toUpperCase())}
-            onKeyDown={async (e) => {
-              if (e.key === 'Enter' && guestCode) {
-                setGuestError("");
-                const res = await fetch('/api/auth/guest', { method: 'POST', body: JSON.stringify({ code: guestCode }) });
-                if (res.ok) { setIsGuest(true); loadQueue(); } else { setGuestError("Invalid or inactive code."); }
-              }
-            }}
-            className="w-full px-5 py-3 rounded-xl bg-[#0a1526] text-white border border-[#2a4566] text-center uppercase tracking-widest font-bold placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
-          />
-          {guestError && <p className="text-red-400 text-sm font-medium">{guestError}</p>}
+          <div className="flex flex-col items-center gap-5 mb-3">
+            <div className="relative">
+              <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 rounded-full"></div>
+              <Image
+                src="/palmentomail_logo.png"
+                alt="palmentomail Logo"
+                width={72} height={72}
+                className="relative rounded-[1.25rem] shadow-2xl border border-white/10 object-contain bg-[#111827]"
+              />
+            </div>
+            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 tracking-tight">palmentomail</h1>
+          </div>
+
+          <p className="text-center text-gray-400 text-sm tracking-wide font-medium mb-10 max-w-[280px]">
+            An online mailbox for the residents of 1 Palmento Way, Irvine CA
+          </p>
+
+          <div className="w-full flex flex-col gap-6">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl blur opacity-0 group-focus-within:opacity-30 transition duration-500"></div>
+              <input
+                type="text"
+                placeholder="ENTER MAILBOX CODE"
+                value={guestCode}
+                onChange={(e) => setGuestCode(e.target.value.toUpperCase())}
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter' && guestCode) {
+                    setGuestError("");
+                    const res = await fetch('/api/auth/guest', { method: 'POST', body: JSON.stringify({ code: guestCode }) });
+                    if (res.ok) { setIsGuest(true); loadQueue(); } else { setGuestError("Invalid or inactive code."); }
+                  }
+                }}
+                className="relative w-full px-5 py-4 rounded-xl bg-[#020617]/80 text-white border border-white/10 text-center uppercase tracking-[0.15em] font-bold text-sm placeholder-gray-600 focus:outline-none focus:bg-[#020617] focus:border-blue-500/50 transition-all shadow-inner"
+              />
+              {guestError && (
+                <p className="absolute -bottom-6 left-0 right-0 text-center text-red-500 text-xs font-semibold tracking-wide">
+                  {guestError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4 w-full mt-2">
+              <div className="h-px w-full bg-gradient-to-r from-transparent to-white/10"></div>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest shrink-0">OR</span>
+              <div className="h-px w-full bg-gradient-to-l from-transparent to-white/10"></div>
+            </div>
+
+            <button
+              onClick={() => signIn('google')}
+              className="w-full relative group overflow-hidden px-6 py-4 rounded-xl bg-white text-[#020617] font-bold hover:bg-gray-50 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(255,255,255,0.1)] border border-transparent hover:border-white/50"
+            >
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+              <span>admin access</span>
+            </button>
+          </div>
         </div>
       </div>
     );
