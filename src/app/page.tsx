@@ -373,32 +373,32 @@ export default function Home() {
 
         {/* HEADER */}
         <header className="relative z-10 h-16 border-b border-[#15263a]/30 flex items-center justify-between px-6 shrink-0 bg-[#15263a] text-white md:bg-[#D3D3D3] md:text-gray-800">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 min-w-0">
             {/* Hamburger Button for Mobile */}
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="md:hidden p-2 -ml-2 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+              className="shrink-0 md:hidden p-2 -ml-2 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
-            <h2 className="text-xl font-bold tracking-tight">
+            <h2 className="text-xl font-bold tracking-tight truncate">
               {activeRecipient ? activeRecipient : "Total Inbox"}
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 md:bg-[#15263a]/10 text-xs font-bold tracking-wide uppercase text-white md:text-[#15263a] border border-white/20 md:border-[#15263a]/20">
+            <span className="shrink-0 px-2.5 py-0.5 rounded-full bg-white/20 md:bg-[#15263a]/10 text-xs font-bold tracking-wide uppercase text-white md:text-[#15263a] border border-white/20 md:border-[#15263a]/20">
               {filteredItems.length} pieces
             </span>
           </div>
           <button
             onClick={loadQueue}
             title="Refresh Inbox"
-            className="p-2 text-white/80 hover:text-white md:text-gray-400 md:hover:text-gray-800 md:hover:bg-gray-100 rounded-full transition-colors"
+            className="shrink-0 ml-4 p-2 text-white/80 hover:text-white md:text-gray-400 md:hover:text-gray-800 md:hover:bg-gray-100 rounded-full transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </button>
         </header>
 
         {/* MAIL LIST */}
-        <div className="relative z-10 flex-1 overflow-y-auto bg-transparent">
+        <div className="relative z-10 flex-1 overflow-y-auto overflow-x-hidden bg-transparent">
           {filteredItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
               <svg className="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
