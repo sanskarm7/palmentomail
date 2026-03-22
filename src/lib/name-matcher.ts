@@ -72,10 +72,8 @@ export function findCanonicalName(rawName: string, existingNames: string[]): str
     const cleanedExisting = cleanName(existing);
     if (!cleanedExisting) continue;
 
-    // 1. Direct subset inclusion (e.g. "Sanskar M" is inside "Sanskar Mishra", or vice-versa)
     if (cleanedExisting.includes(cleanedRaw) || cleanedRaw.includes(cleanedExisting)) {
-      // If one is a subset of the other, always prefer the longer, more descriptive canonical name
-      return existing.length > rawName.length ? existing : rawName;
+      return existing;
     }
 
     // 2. Tokenized Word Intersection (solves "Leo Wu-Hacohen" vs "Leo Song Wu-Hacohen")
@@ -93,7 +91,7 @@ export function findCanonicalName(rawName: string, existingNames: string[]): str
       const hasSignificantMatch = wordsRaw.some(w => wordsExisting.includes(w) && w.length > 2);
 
       if (matchCount >= requiredMatches && hasSignificantMatch) {
-         return existing.length > rawName.length ? existing : rawName;
+         return existing;
       }
     }
 

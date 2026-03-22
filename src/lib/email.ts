@@ -55,7 +55,7 @@ export async function sendRecipientNotification(
         
         <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
         <p style="color: #9ca3af; font-size: 12px; text-align: center; font-family: sans-serif;">
-          Sent securely by your automated MailOps scraping system.
+          Sent securely via palmentomail.
         </p>
       </div>
     </body>
