@@ -72,10 +72,29 @@ export function findCanonicalName(rawName: string, existingNames: string[]): str
     const cleanedExisting = cleanName(existing);
     if (!cleanedExisting) continue;
 
-    // Direct subset inclusion (e.g. "Sanskar M" is inside "Sanskar Mishra", or vice-versa)
+    // 1. Direct subset inclusion (e.g. "Sanskar M" is inside "Sanskar Mishra", or vice-versa)
     if (cleanedExisting.includes(cleanedRaw) || cleanedRaw.includes(cleanedExisting)) {
       // If one is a subset of the other, always prefer the longer, more descriptive canonical name
       return existing.length > rawName.length ? existing : rawName;
+    }
+
+    // 2. Tokenized Word Intersection (solves "Leo Wu-Hacohen" vs "Leo Song Wu-Hacohen")
+    const wordsRaw = cleanedRaw.split(" ").filter(Boolean);
+    const wordsExisting = cleanedExisting.split(" ").filter(Boolean);
+    
+    if (wordsRaw.length > 0 && wordsExisting.length > 0) {
+      let matchCount = 0;
+      for (const w of wordsRaw) {
+        if (wordsExisting.includes(w)) matchCount++;
+      }
+      
+      const minWords = Math.min(wordsRaw.length, wordsExisting.length);
+      const requiredMatches = minWords >= 2 ? 2 : 1;
+      const hasSignificantMatch = wordsRaw.some(w => wordsExisting.includes(w) && w.length > 2);
+
+      if (matchCount >= requiredMatches && hasSignificantMatch) {
+         return existing.length > rawName.length ? existing : rawName;
+      }
     }
 
     // Mathematical Levenshtein threshold (tolerates up to 2 character typos/mistakes)
