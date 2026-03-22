@@ -39,7 +39,8 @@ export default function Home() {
     const uniqueMap = new Map<string, { name: string; count: number; pinned: boolean }>();
     
     // 1. Pre-register pinned inbox names from the environment wrapper
-    const pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
+    let pinnedEnv = process.env.NEXT_PUBLIC_PINNED_RECIPIENTS || "";
+    pinnedEnv = pinnedEnv.replace(/"/g, ""); // Strip any Webpack/Next.js escaped literal quotes
     if (pinnedEnv) {
       pinnedEnv.split(",").forEach(name => {
         const trimmed = name.trim();
@@ -65,10 +66,20 @@ export default function Home() {
       }
     });
 
-    // 3. Sort logic: Pinned inboxes stay at the top natively, followed by volume bounds
+    // 3. Sort logic: Pinned inboxes stay exactly in their .env.local declaration order, followed by guests sorted by volume descending
+    const envOrder = pinnedEnv.split(",").map(n => n.trim().toLowerCase());
+    
     return Array.from(uniqueMap.values()).sort((a, b) => {
+      // Pinned vs Non-Pinned
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
+      
+      // Both Pinned: Enforce static environment declaration order
+      if (a.pinned && b.pinned) {
+        return envOrder.indexOf(a.name.toLowerCase()) - envOrder.indexOf(b.name.toLowerCase());
+      }
+      
+      // Both Non-Pinned: Sort by raw mail count descending
       return b.count - a.count;
     });
   }, [items]);
